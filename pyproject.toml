@@ -1,0 +1,26 @@
+[project]
+name = "nzpower"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Henry Xu", email = "hxu.akl.nz@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "duckdb>=1.5.5",
+    "requests>=2.34.2",
+]
+
+[project.scripts]
+nzpower = "nzpower:main"
+
+[build-system]
+requires = ["uv_build>=0.12.18,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.9",
+]
