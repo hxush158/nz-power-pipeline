@@ -1,12 +1,16 @@
+import argparse
+import os
+import sys
+from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import requests
 
 
-# download_prices(start_date, end_date, kind, dest="data/raw/prices", final_grace_days=<待定>, today=None)
+# download_prices(start_date, end_date, kind, dest="data/raw/prices", *, final_grace_days, today=None)
 #
 # 作用：下载 [start_date, end_date] 内每一天的一种 EMI 价格文件，保存为
 #   YYYYMMDD_final.csv 或 YYYYMMDD_interim.csv（两种文件仍然并存，由 kind 决定下载哪一种）。
@@ -16,7 +20,7 @@ import requests
 #   start_date, end_date：含首尾的日期
 #   kind："final" 或 "interim"，其他值抛 ValueError
 #   final_grace_days：final 允许的发布延迟天数，按新西兰本地日期计算；
-#     默认值待观察一两周发布日志后确定，不在这里先定一个数字
+#     必须显式传入（仅限关键字参数），暂不设默认值；待观察一两周发布日志后再决定
 #   today：可选，默认取新西兰本地（Pacific/Auckland）的今天；测试里传入固定日期
 #
 # 返回：DownloadSummary，包含
@@ -42,11 +46,15 @@ import requests
 #   final 返回 404：
 #     今天 - 该日期 <= final_grace_days -> 不算失败，状态记为 final_not_published
 #     今天 - 该日期 >  final_grace_days -> 算失败，记为 FinalOverdue（逾期未发布，疑似数据缺口）
+#     FinalOverdue 是异常类（继承 Exception），收进 failures；消息含日期、kind 和宽限天数
 #   interim 返回 404 -> 不算失败，状态记为 interim_withdrawn（final 发布后 interim 被撤掉，属正常现象）
 #   网络错误、超时、其他状态码 -> 记为 DownloadError
 #   内容不是合法 CSV（如 HTML 错误页）-> 记为 InvalidContent
 #   处理完所有日期后若有失败，抛出 PartialDownloadError，
 #   其中包含每个失败的 (日期, 原因) 列表；已成功的文件不回滚。
+#   PartialDownloadError 的属性：
+#     failures：[(日期, 异常对象)]，按日期顺序；原因直接存异常对象（DownloadError、InvalidContent 等）
+#     summary：DownloadSummary，包含已成功处理的日期结果和提示信息
 #
 # 边界与约定：
 #   下载先写临时文件，校验通过后再改名，避免留下半个文件
@@ -54,7 +62,10 @@ import requests
 #   final 逾期的判断在 download_prices 内完成；_download_one 只如实返回 final_not_published
 #   interim 没有逾期的概念（404 一律是 interim_withdrawn）；
 #     较早的日期应请求 kind="final"，才能发现数据缺口
-def download_prices(start_date, end_date, kind, dest="data/raw/prices", today=None):
+def download_prices(
+    start_date, end_date, kind, dest="data/raw/prices", *, final_grace_days, today=None
+):
+    _check_kind(kind)
     if start_date > end_date:
         return DownloadSummary(
             results={},
@@ -74,8 +85,32 @@ def download_prices(start_date, end_date, kind, dest="data/raw/prices", today=No
         messages.append(f"skipped future dates: {skipped}")
     if not days:
         messages.append("no dates to download")
-    results = {day: _download_one(day, kind, Path(dest)) for day in days}
-    return DownloadSummary(results=results, messages=messages)
+    results = {}
+    failures = []
+    for day in days:
+        try:
+            result = _download_one(day, kind, Path(dest))
+        except (DownloadError, InvalidContent) as exc:
+            failures.append((day, exc))
+            continue
+        if result.status == "final_not_published" and (
+            (today - day).days > final_grace_days
+        ):
+            failures.append(
+                (
+                    day,
+                    FinalOverdue(
+                        f"{day:%Y-%m-%d} final: not published after "
+                        f"{final_grace_days} grace days"
+                    ),
+                )
+            )
+            continue
+        results[day] = result
+    summary = DownloadSummary(results=results, messages=messages)
+    if failures:
+        raise PartialDownloadError(failures, summary)
+    return summary
 
 class DownloadError(Exception):
     pass
@@ -83,6 +118,18 @@ class DownloadError(Exception):
 
 class InvalidContent(Exception):
     pass
+
+
+class FinalOverdue(Exception):
+    pass
+
+
+class PartialDownloadError(Exception):
+    def __init__(self, failures, summary):
+        self.failures = failures
+        self.summary = summary
+        details = "; ".join(f"{day:%Y-%m-%d}: {exc}" for day, exc in failures)
+        super().__init__(f"{len(failures)} date(s) failed: {details}")
 
 
 EXPECTED_HEADER = (
@@ -139,6 +186,8 @@ class DownloadSummary:
 #     合法的标准：第一行必须正好是这 4 个列名（顺序也要一致）：
 #       TradingDate,TradingPeriod,PointOfConnection,DollarsPerMegawattHour
 #     只有表头、没有数据行 -> 合法；空文件、没有表头、表头不对（如 HTML 错误页）-> 不合法
+#   写文件时先写同目录下的临时文件，写完再改名替换正式文件；写入中途出错 ->
+#     抛出原始错误（OSError），本地已有的旧文件保持原样，不留下临时文件
 #   本地已有同名文件，且新下载的内容与它完全相同（字节一致）-> 不改动文件，
 #     返回 DownloadResult("unchanged", 该文件路径)
 #   本地已有同名文件，且新内容有差异 -> 用新内容覆盖，返回 DownloadResult("updated", 文件路径, diff=...)
@@ -147,8 +196,7 @@ class DownloadSummary:
 #       same = 主键和价格都相同；changed = 主键相同、价格不同；
 #       only_old = 只在旧文件；only_new = 只在新文件；先比较后覆盖
 def _download_one(day, kind, dest):
-    if kind not in ("final", "interim"):
-        raise ValueError(f"kind must be 'final' or 'interim', got {kind!r}")
+    _check_kind(kind)
     date_str = f"{day:%Y%m%d}"
     server_suffix = {"final": "", "interim": "_I"}[kind]
     url = (
@@ -180,10 +228,25 @@ def _download_one(day, kind, dest):
         if old_content == response.content:
             return DownloadResult("unchanged", path)
         diff = _compare_rows(old_content, response.content)
-        path.write_bytes(response.content)
+        _write_atomic(path, response.content)
         return DownloadResult("updated", path, diff)
-    path.write_bytes(response.content)
+    _write_atomic(path, response.content)
     return DownloadResult("downloaded", path)
+
+
+def _write_atomic(path, content):
+    temp_path = path.with_name(path.name + ".tmp")
+    try:
+        temp_path.write_bytes(content)
+        os.replace(temp_path, path)
+    except BaseException:
+        temp_path.unlink(missing_ok=True)
+        raise
+
+
+def _check_kind(kind):
+    if kind not in ("final", "interim"):
+        raise ValueError(f"kind must be 'final' or 'interim', got {kind!r}")
 
 
 def _rows_by_key(content):
@@ -205,3 +268,49 @@ def _compare_rows(old_content, new_content):
         only_old=len(old_rows.keys() - new_rows.keys()),
         only_new=len(new_rows.keys() - old_rows.keys()),
     )
+
+
+# 命令行入口：uv run python -m nzpower.ingest --start YYYY-MM-DD --end YYYY-MM-DD
+#   --kind final|interim --final-grace-days N [--dest 目录]
+# main(argv=None) -> 退出码；argv 可传入参数列表，便于测试
+#   参数缺失、日期格式不对、kind 不合法 -> argparse 报错，退出码 2
+#   成功 -> 标准输出打印各状态计数（如 "downloaded: 3, unchanged: 1"）和所有提示信息，退出码 0
+#   提示信息（如日期范围反向）不算失败，退出码仍为 0
+#   部分失败（PartialDownloadError）-> 成功的计数仍打印到标准输出；
+#     每个失败的 "日期: 原因" 打印到标准错误；退出码 1
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(prog="nzpower.ingest")
+    parser.add_argument("--start", type=date.fromisoformat, required=True)
+    parser.add_argument("--end", type=date.fromisoformat, required=True)
+    parser.add_argument("--kind", choices=["final", "interim"], required=True)
+    parser.add_argument("--final-grace-days", type=int, required=True)
+    parser.add_argument("--dest", default="data/raw/prices")
+    args = parser.parse_args(argv)
+
+    exit_code = 0
+    try:
+        summary = download_prices(
+            args.start,
+            args.end,
+            args.kind,
+            args.dest,
+            final_grace_days=args.final_grace_days,
+        )
+    except PartialDownloadError as error:
+        summary = error.summary
+        for day, reason in error.failures:
+            print(f"{day:%Y-%m-%d}: {reason}", file=sys.stderr)
+        exit_code = 1
+
+    counts = Counter(result.status for result in summary.results.values())
+    if counts:
+        print(", ".join(f"{status}: {count}" for status, count in counts.items()))
+    for message in summary.messages:
+        print(message)
+    return exit_code
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

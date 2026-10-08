@@ -1,5 +1,6 @@
 # tests/test_ingest.py
 from datetime import date
+from pathlib import Path
 
 import pytest
 import requests
@@ -7,9 +8,12 @@ import requests
 from nzpower.ingest import (
     DiffStats,
     DownloadError,
+    FinalOverdue,
     InvalidContent,
+    PartialDownloadError,
     _download_one,
     download_prices,
+    main,
 )
 
 HEADER = "TradingDate,TradingPeriod,PointOfConnection,DollarsPerMegawattHour\n"
@@ -274,7 +278,12 @@ def test_reversed_range_returns_message_without_requests(tmp_path, monkeypatch):
     monkeypatch.setattr("requests.get", fail_if_called)
 
     summary = download_prices(
-        date(2026, 9, 25), date(2026, 9, 24), "final", tmp_path, today=TODAY
+        date(2026, 9, 25),
+        date(2026, 9, 24),
+        "final",
+        tmp_path,
+        final_grace_days=7,
+        today=TODAY,
     )
 
     assert summary.results == {}
@@ -291,7 +300,12 @@ def test_future_dates_are_skipped_with_message(tmp_path, monkeypatch):
     )
 
     summary = download_prices(
-        date(2026, 9, 25), date(2026, 9, 28), "final", tmp_path, today=TODAY
+        date(2026, 9, 25),
+        date(2026, 9, 28),
+        "final",
+        tmp_path,
+        final_grace_days=7,
+        today=TODAY,
     )
 
     assert list(summary.results) == [date(2026, 9, 25), date(2026, 9, 26)]
@@ -312,7 +326,12 @@ def test_all_future_dates_returns_two_messages_without_requests(
     monkeypatch.setattr("requests.get", fail_if_called)
 
     summary = download_prices(
-        date(2026, 9, 27), date(2026, 9, 28), "final", tmp_path, today=TODAY
+        date(2026, 9, 27),
+        date(2026, 9, 28),
+        "final",
+        tmp_path,
+        final_grace_days=7,
+        today=TODAY,
     )
 
     assert summary.results == {}
@@ -321,3 +340,220 @@ def test_all_future_dates_returns_two_messages_without_requests(
     assert "2026-09-28" in summary.messages[0]
     assert "no dates" in summary.messages[1]
     assert list(tmp_path.iterdir()) == []
+
+
+# test case D
+def test_normal_range_downloads_every_date_without_messages(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "requests.get",
+        lambda *args, **kwargs: FakeResponse(200, CSV_BODY.encode()),
+    )
+
+    summary = download_prices(
+        date(2026, 9, 24),
+        date(2026, 9, 26),
+        "final",
+        tmp_path,
+        final_grace_days=7,
+        today=TODAY,
+    )
+
+    assert list(summary.results) == [
+        date(2026, 9, 24),
+        date(2026, 9, 25),
+        date(2026, 9, 26),
+    ]
+    assert all(r.status == "downloaded" for r in summary.results.values())
+    assert summary.messages == []
+
+
+# test case E
+def test_failed_date_does_not_stop_others_and_raises_partial_error(
+    tmp_path, monkeypatch
+):
+    def fake_get(url, *args, **kwargs):
+        if "20260925" in url:
+            return FakeResponse(500, b"Server Error")
+        return FakeResponse(200, CSV_BODY.encode())
+
+    monkeypatch.setattr("requests.get", fake_get)
+
+    with pytest.raises(PartialDownloadError) as excinfo:
+        download_prices(
+            date(2026, 9, 24),
+            date(2026, 9, 26),
+            "final",
+            tmp_path,
+            final_grace_days=7,
+            today=TODAY,
+        )
+
+    error = excinfo.value
+    assert [day for day, _ in error.failures] == [date(2026, 9, 25)]
+    assert isinstance(error.failures[0][1], DownloadError)
+    assert list(error.summary.results) == [date(2026, 9, 24), date(2026, 9, 26)]
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "20260924_final.csv",
+        "20260926_final.csv",
+    ]
+
+
+# test case F
+def test_final_404_beyond_grace_days_is_overdue_failure(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "requests.get",
+        lambda *args, **kwargs: FakeResponse(404, b"<html>Not Found</html>"),
+    )
+
+    with pytest.raises(PartialDownloadError) as excinfo:
+        download_prices(
+            date(2026, 9, 18),
+            date(2026, 9, 19),
+            "final",
+            tmp_path,
+            final_grace_days=7,
+            today=TODAY,
+        )
+
+    error = excinfo.value
+    # 09-18 is 8 days before today: overdue. 09-19 is exactly 7: still waiting.
+    assert [day for day, _ in error.failures] == [date(2026, 9, 18)]
+    assert isinstance(error.failures[0][1], FinalOverdue)
+    message = str(error.failures[0][1])
+    assert "2026-09-18" in message
+    assert "final" in message
+    assert "7" in message
+    assert list(error.summary.results) == [date(2026, 9, 19)]
+    assert error.summary.results[date(2026, 9, 19)].status == "final_not_published"
+    assert list(tmp_path.iterdir()) == []
+
+
+# test case G
+def test_interim_404_is_never_overdue(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "requests.get",
+        lambda *args, **kwargs: FakeResponse(404, b"<html>Not Found</html>"),
+    )
+
+    summary = download_prices(
+        date(2026, 9, 1),
+        date(2026, 9, 2),
+        "interim",
+        tmp_path,
+        final_grace_days=7,
+        today=TODAY,
+    )
+
+    assert list(summary.results) == [date(2026, 9, 1), date(2026, 9, 2)]
+    assert all(r.status == "interim_withdrawn" for r in summary.results.values())
+    assert summary.messages == []
+
+# test case H
+def test_invalid_kind_raises_value_error_even_for_empty_range(tmp_path, monkeypatch):
+    monkeypatch.setattr("requests.get", fail_if_called)
+
+    with pytest.raises(ValueError) as excinfo:
+        download_prices(
+            date(2026, 9, 25),
+            date(2026, 9, 24),
+            "draft",
+            tmp_path,
+            final_grace_days=7,
+            today=TODAY,
+        )
+
+    assert "draft" in str(excinfo.value)
+
+
+# test case 16
+def test_failed_write_keeps_existing_file_and_leaves_no_temp_file(
+    tmp_path, monkeypatch
+):
+    old_body = CSV_BODY.encode()
+    new_body = (HEADER + ROW_1).encode()
+    existing = tmp_path / "20260926_final.csv"
+    existing.write_bytes(old_body)
+    monkeypatch.setattr(
+        "requests.get",
+        lambda *args, **kwargs: FakeResponse(200, new_body),
+    )
+    original_write_bytes = Path.write_bytes
+
+    def broken_write_bytes(self, data):
+        original_write_bytes(self, data[:10])
+        raise OSError("disk full")
+
+    monkeypatch.setattr("pathlib.Path.write_bytes", broken_write_bytes)
+
+    with pytest.raises(OSError):
+        _download_one(date(2026, 9, 26), "final", tmp_path)
+
+    assert existing.read_bytes() == old_body
+    assert list(tmp_path.iterdir()) == [existing]
+
+
+# CLI tests (use the real clock; the dates used are in the past)
+def cli_args(tmp_path, start, end):
+    return [
+        "--start", start,
+        "--end", end,
+        "--kind", "final",
+        "--final-grace-days", "7",
+        "--dest", str(tmp_path),
+    ]
+
+
+# test case CLI-1
+def test_cli_success_prints_counts_and_exits_zero(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(
+        "requests.get",
+        lambda *args, **kwargs: FakeResponse(200, CSV_BODY.encode()),
+    )
+
+    exit_code = main(cli_args(tmp_path, "2026-09-25", "2026-09-26"))
+
+    assert exit_code == 0
+    assert "downloaded: 2" in capsys.readouterr().out
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "20260925_final.csv",
+        "20260926_final.csv",
+    ]
+
+# test case CLI-2
+def test_cli_partial_failure_exits_one_and_reports_failures(
+    tmp_path, monkeypatch, capsys
+):
+    def fake_get(url, *args, **kwargs):
+        if "20260925" in url:
+            return FakeResponse(500, b"Server Error")
+        return FakeResponse(200, CSV_BODY.encode())
+
+    monkeypatch.setattr("requests.get", fake_get)
+
+    exit_code = main(cli_args(tmp_path, "2026-09-25", "2026-09-26"))
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "downloaded: 1" in captured.out
+    assert "2026-09-25" in captured.err
+    assert "HTTP 500" in captured.err
+
+# test case CLI-3
+def test_cli_reversed_range_prints_message_and_exits_zero(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.setattr("requests.get", fail_if_called)
+
+    exit_code = main(cli_args(tmp_path, "2026-09-26", "2026-09-25"))
+
+    assert exit_code == 0
+    assert "reversed" in capsys.readouterr().out
+
+# test case CLI-4
+def test_cli_invalid_date_format_exits_with_code_two(tmp_path, monkeypatch):
+    monkeypatch.setattr("requests.get", fail_if_called)
+
+    with pytest.raises(SystemExit) as excinfo:
+        main(cli_args(tmp_path, "26-09-2026", "2026-09-26"))
+
+    assert excinfo.value.code == 2
