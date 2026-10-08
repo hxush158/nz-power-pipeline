@@ -557,3 +557,33 @@ def test_cli_invalid_date_format_exits_with_code_two(tmp_path, monkeypatch):
         main(cli_args(tmp_path, "26-09-2026", "2026-09-26"))
 
     assert excinfo.value.code == 2
+
+
+# test case 17
+def test_missing_dest_directory_is_created(tmp_path, monkeypatch):
+    dest = tmp_path / "a" / "b"
+    monkeypatch.setattr(
+        "requests.get",
+        lambda *args, **kwargs: FakeResponse(200, CSV_BODY.encode()),
+    )
+
+    result = _download_one(date(2026, 9, 26), "final", dest)
+
+    assert result.status == "downloaded"
+    assert result.path == dest / "20260926_final.csv"
+    assert result.path.read_bytes() == CSV_BODY.encode()
+
+# test case 18
+def test_missing_dest_directory_is_not_created_when_nothing_to_write(
+    tmp_path, monkeypatch
+):
+    dest = tmp_path / "a"
+    monkeypatch.setattr(
+        "requests.get",
+        lambda *args, **kwargs: FakeResponse(404, b"<html>Not Found</html>"),
+    )
+
+    result = _download_one(date(2026, 9, 26), "final", dest)
+
+    assert result.status == "final_not_published"
+    assert not dest.exists()

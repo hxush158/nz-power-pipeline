@@ -186,6 +186,8 @@ class DownloadSummary:
 #     合法的标准：第一行必须正好是这 4 个列名（顺序也要一致）：
 #       TradingDate,TradingPeriod,PointOfConnection,DollarsPerMegawattHour
 #     只有表头、没有数据行 -> 合法；空文件、没有表头、表头不对（如 HTML 错误页）-> 不合法
+#   dest 目录不存在 -> 写文件时自动创建（包括中间层级）；已存在则不处理；
+#     没有文件可写的情况（404、内容不合法、kind 非法、同内容 unchanged）不创建目录
 #   写文件时先写同目录下的临时文件，写完再改名替换正式文件；写入中途出错 ->
 #     抛出原始错误（OSError），本地已有的旧文件保持原样，不留下临时文件
 #   本地已有同名文件，且新下载的内容与它完全相同（字节一致）-> 不改动文件，
@@ -235,6 +237,7 @@ def _download_one(day, kind, dest):
 
 
 def _write_atomic(path, content):
+    path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = path.with_name(path.name + ".tmp")
     try:
         temp_path.write_bytes(content)
