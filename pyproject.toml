@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
+    "azure-storage-blob>=12.31.0",
     "duckdb>=1.5.5",
     "requests>=2.34.2",
 ]
