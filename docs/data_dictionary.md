@@ -9,30 +9,44 @@ Source: www.emi.ea.govt.nz provided by the Electricity Authority (New Zealand), 
 | 下载地址 | https://www.emi.ea.govt.nz/Wholesale/Datasets/DispatchAndPricing/FinalEnergyPrices/ |
 | 文件命名 | 最终价 `YYYYMMDD_FinalEnergyPrices.csv`，临时价 `YYYYMMDD_FinalEnergyPrices_I.csv` |
 | 粒度 | 每个文件 = 1 个交易日 × 所有节点 × 所有交易时段 |
-| 每日行数 | 普通日约 ____ 行；夏令时结束日（如 2026-04-05）约 ____ 行 |
+| 每日行数 | 普通日约 11808 行；夏令时结束日（如 2026-04-05）约 12200 行 |
 | 访问方式 | 302 重定向到 Azure Blob；文件不存在时返回 404 和 HTML 错误页 |
-| 发布时间 | 最终价在交易日后第 ____ 天发布；临时价在 ____ 时被删除 |
+| 发布时间 | 最终价在交易日后第 2 天发布；临时价在 2:00pm 时被删除 |
 
 ## 2. 列说明
 
 | 列名 | 类型（DuckDB 推断） | 含义 | 观察到的取值范围 / 数据问题 |
 |---|---|---|---|
-| TradingDate | ____ | 交易日（新西兰本地日期） | ____ |
-| TradingPeriod | ____ | 半小时交易时段编号 | 普通日 1–____；夏令时结束日 1–____；夏令时开始日预计 1–46（待验证） |
-| PointOfConnection | ____ | 电网节点代码，价格按节点计算 | 共 ____ 个节点 |
-| DollarsPerMegawattHour | ____ | 该节点、该时段的电价（新西兰元/兆瓦时） | 最小 ____，最大 ____，中位数 ____；负价或零价 ____ 行；空值 ____ 行 |
+| TradingDate | Date | 交易日（新西兰本地日期） | DD/MM/YY |
+| TradingPeriod | INT | 半小时交易时段编号 | 普通日 1–48；夏令时结束日 1–50；夏令时开始日预计 1–46（待验证） |
+| PointOfConnection | INT | 电网节点代码，价格按节点计算 | 共 246 个节点 |
+| DollarsPerMegawattHour | FLOAT | 该节点、该时段的电价（新西兰元/兆瓦时） | 最小 -0.19 ，最大 150.75，中位数 15.39；负价或零价 1 行；空值 0 行 |
 
 ## 3. 主键
 
 `(TradingDate, TradingPeriod, PointOfConnection)` 唯一确定一行。
-验证方法：____（提示：写一条查询证明没有重复）
+验证方法：
+SELECT 
+    TradingDate, 
+    TradingPeriod, 
+    PointOfConnection, 
+    COUNT(*) AS DuplicateCount
+FROM 
+    your_table_name -- 替换为你的表名
+GROUP BY 
+    TradingDate, 
+    TradingPeriod, 
+    PointOfConnection
+HAVING 
+    COUNT(*) > 1;
+（提示：写一条查询证明没有重复）
 
 ## 4. 已知数据问题
 
 - 夏令时切换日的时段数不是 48
 - 临时价会被最终价替代，而且临时价文件随后会被删除
 - 2026-09-26 的临时价与最终价完全相同（MD5 一致）；只观察了 1 天，需要继续观察
-- ____
+- 基本上都是一致的
 
 ## 5. 设计决策
 
