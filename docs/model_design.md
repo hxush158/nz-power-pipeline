@@ -33,31 +33,36 @@
  dim_date (PK date_key)
       │ 1:N
       ▼
- dim_trading_period (PK period_key; FK date_key; UNIQUE date_key + trading_period)
+ dim_trading_period (PK period_key = date_key * 100 + trading_period;
+      │               FK date_key; UNIQUE date_key + trading_period)
       │ 1:N
-      │
-      ├──────────────┐
-      ▼              │
+      ▼
  fact_electricity_price
    PK (period_key, node_key, price_version)
    FK period_key → dim_trading_period.period_key
-   FK date_key   → dim_date.date_key     [冗余，需一致性校验]
    FK node_key   → dim_node.node_key
-   price_nzd_per_mwh, loaded_at, source_file
-      ▲
-      │ N:1
- dim_node (PK node_key; UNIQUE node_id)
+   price_nzd_per_mwh, source_file
+      ▲                         │
+      │ N:1                     │ 汇总（final 优先）
+ dim_node (PK node_key;         ▼
+      │    UNIQUE node_id)   mart_current_price
+      │ 派生                  (period_key + node_key)
+      ▼                         │
+ v_dim_node                     ▼
+ (dim_node + first_seen_date) mart_daily_price
+                              (trading_date + node_key)
 ```
+
 ## 4. 五项关键设计决策
 
-1. **价格粒度与版本**：保留 `interim` 和 `final` 两个业务版本；同一版本重新下载后采用可重复执行的 upsert/替换策略，整表重建，增量放到 dbt。
+1. **价格粒度与版本**：保留 `interim` 和 `final` 两个业务版本；同一版本重新下载后，整表重建（由 `stg_prices` 全量构建）即可得到相同结果，不产生重复事实记录；增量加载放到 dbt。
 2. **夏令时**：交易时段编号不是固定本地钟点。`dim_trading_period` 依据交易日和市场时段规则记录实际 UTC 起止时间及新西兰本地时间，支持 46/48/50 时段日；禁止仅以 `(trading_period - 1) × 30分钟` 推算所有日期的本地时间。时段长度与源文件语义需在 ingestion 时核验。
-3. **节点维度**：先从价格数据中抽取唯一 `node_id` 建 `dim_node`，不等待岛屿/区域属性；`island`、`region` 后续通过 EMI 参考数据补齐，暂不引入 SCD Type 2。每次加载把新 node_id 补进 dim_node。
-4. **发电量数据**：当前只做价格事实表；第 9 周另建 `fact_generation`（粒度依实际数据源确认），尽可能复用一致性日期、时段及节点维度，但必须先核实发电计量对象和价格节点是否可映射。first_seen_date 取事实表中该节点的 MIN(交易日)，每次重算，所以重跑和回填历史数据都是幂等的。
+3. **节点维度**：先从价格数据中抽取唯一 `node_id` 建 `dim_node`，不等待岛屿/区域属性；`island`、`region` 后续通过 EMI 参考数据补齐，暂不引入 SCD Type 2。每次加载把新 `node_id` 补进 `dim_node`。节点身份按大写比较（`aby0111` 与 `ABY0111` 是同一节点），`node_key` 为大写 `node_id` 的哈希，保证稳定、可整表重建；空 `node_id` 不进入维度。`first_seen_date` 不物理存储，由视图 `v_dim_node` 派生：取事实表中该节点的最早交易日，等于全局最早交易日则为 `NULL`（基线节点），每次重算，所以重跑和回填历史数据都是幂等的。
+4. **发电量数据**：当前只做价格事实表；第 9 周另建 `fact_generation`（粒度依实际数据源确认），尽可能复用一致性日期、时段及节点维度，但必须先核实发电计量对象和价格节点是否可映射。
 5. **最佳可用价格**：在 MART 表 `mart_current_price` 中对每个 `(period_key, node_key)` 只选一行：**有 final 则选 final，否则选 interim**。下游日均价、趋势和 BI 均基于此表，避免重复计数。
 
 ## 5. MART 与数据质量验收
 
-- `mart_current_price`：每个交易时段 × 节点保留一条当前最佳价格；`mart_daily_price`：基于当前最佳价格按交易日、节点汇总（简单平均，等同于时间加权"）。
+- `mart_current_price`：每个交易时段 × 节点保留一条当前最佳价格；`mart_daily_price`：基于当前最佳价格按交易日、节点汇总（简单平均，等同于时间加权，因为所有交易时段都是 30 分钟；`interim_period_count` 标明当天有多少时段仍是临时价）。
 - **基础测试**：主键无重复、维度外键可解析、`price_version` 值合法、每个交易日时段数量和 UTC 时间映射合理、`final` 优先级正确、重跑结果幂等。
 - **范围控制**：暂不实现价格预测、完整发布修订审计、复杂区域映射或发电与价格的联合归因；优先落实自动化加载、清洗、转换、测试和编排。
