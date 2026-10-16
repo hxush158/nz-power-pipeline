@@ -25,3 +25,7 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.16.9",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# 测试里比较的是 DuckDB 的 TIMESTAMP（Python 里是不带时区的 datetime），不带时区是有意的。
+"tests/*" = ["DTZ001"]
