@@ -17,7 +17,7 @@ Source: www.emi.ea.govt.nz provided by the Electricity Authority (New Zealand), 
 
 | 列名 | 类型（DuckDB 推断） | 含义 | 观察到的取值范围 / 数据问题 |
 |---|---|---|---|
-| TradingDate | Date | 交易日（新西兰本地日期） | DD/MM/YY |
+| TradingDate | Date | 交易日（新西兰本地日期） |  YYYY-MM-DD |
 | TradingPeriod | INT | 半小时交易时段编号 | 普通日 1–48；夏令时结束日 1–50；夏令时开始日预计 1–46（待验证） |
 | PointOfConnection | INT | 电网节点代码，价格按节点计算 | 共 246 个节点 |
 | DollarsPerMegawattHour | FLOAT | 该节点、该时段的电价（新西兰元/兆瓦时） | 最小 -0.19 ，最大 150.75，中位数 15.39；负价或零价 1 行；空值 0 行 |
