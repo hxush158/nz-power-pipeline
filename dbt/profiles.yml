@@ -1,0 +1,8 @@
+# 本地开发用 DuckDB；Snowflake target 之后加进来，凭据只走环境变量。
+nz_power:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: dbt_dev.duckdb
+      threads: 4

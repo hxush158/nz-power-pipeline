@@ -1,0 +1,29 @@
+version: 2
+
+models:
+  - name: stg_prices
+    description: >
+      原始 EMI 价格 CSV 的统一输入层（视图）。粒度：文件中的一行
+      = trading_date × trading_period × node_id × price_version。
+    columns:
+      - name: trading_date
+        description: 交易日（新西兰日期）。
+        data_tests: [not_null]
+      - name: trading_period
+        description: 交易时段编号，从当地午夜起每 30 分钟一个（1–50）。
+        data_tests: [not_null]
+      - name: node_id
+        description: 价格节点代码（如 ABY0111），按字符串读取，未清洗。
+        data_tests: [not_null]
+      - name: price_nzd_per_mwh
+        description: 价格，NZD / MWh。
+      - name: price_version
+        description: 来自文件名，final 或 interim。
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [final, interim]
+      - name: source_file
+        description: 来源文件名（不含目录）。
+        data_tests: [not_null]

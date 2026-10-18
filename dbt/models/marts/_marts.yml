@@ -1,0 +1,126 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: 日历维度，每个日历日一行（2020-01-01 ~ 2030-12-31）。粒度：一天。
+    columns:
+      - name: date_key
+        description: YYYYMMDD 整数键。
+        data_tests: [unique, not_null]
+      - name: trading_date
+        description: 日期。
+        data_tests: [unique, not_null]
+      - name: day_of_week
+        description: ISO 星期，周一 = 1。
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5, 6, 7]
+                quote: false
+
+  - name: dim_trading_period
+    description: >
+      交易时段维度。粒度：交易日 × 交易时段；正常日 48 行，夏令时切换日 46 或 50 行。
+    columns:
+      - name: period_key
+        description: date_key * 100 + trading_period。
+        data_tests: [unique, not_null]
+      - name: date_key
+        description: 指向 dim_date。
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+      - name: periods_in_day
+        description: 当天的时段总数。
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [46, 48, 50]
+                quote: false
+
+  - name: dim_node
+    description: 价格节点维度。粒度：一个节点（大写 node_id）。
+    columns:
+      - name: node_key
+        description: hash(大写 node_id) 得到的稳定整数键。
+        data_tests: [unique, not_null]
+      - name: node_id
+        description: 大写的节点代码。
+        data_tests: [unique, not_null]
+
+  - name: fact_electricity_price
+    description: >
+      价格事实表。粒度：交易时段 × 节点 × 版本（interim / final）。
+      主键 (period_key, node_key, price_version) 的唯一性由 tests/ 下的单独测试检查。
+    columns:
+      - name: period_key
+        description: 指向 dim_trading_period。
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_trading_period')
+                field: period_key
+      - name: node_key
+        description: 指向 dim_node。
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_node')
+                field: node_key
+      - name: price_version
+        description: final 或 interim。
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [final, interim]
+      - name: price_nzd_per_mwh
+        description: 价格，NZD / MWh，保留 2 位小数。
+      - name: source_file
+        description: 来源文件名，用于追溯。
+        data_tests: [not_null]
+
+  - name: v_dim_node
+    description: >
+      dim_node 加派生列 first_seen_date 的视图。粒度：一个节点。
+    columns:
+      - name: node_key
+        data_tests: [unique, not_null]
+      - name: first_seen_date
+        description: 节点在事实表中首次出现的交易日；基线节点为 NULL。
+
+  - name: mart_current_price
+    description: >
+      每个时段 × 节点的当前最佳价格：有 final 用 final，否则用 interim。
+      粒度：交易时段 × 节点。
+    columns:
+      - name: period_key
+        data_tests: [not_null]
+      - name: node_key
+        data_tests: [not_null]
+      - name: price_version
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [final, interim]
+
+  - name: mart_daily_price
+    description: >
+      每个交易日 × 节点的日汇总（均价、最低、最高、时段数、临时价时段数）。
+      粒度：交易日 × 节点。
+    columns:
+      - name: trading_date
+        data_tests: [not_null]
+      - name: node_key
+        data_tests: [not_null]
+      - name: avg_price
+        data_tests: [not_null]
+      - name: period_count
+        description: 当天有价格的时段数（正常日 48，夏令时切换日 46 或 50）。
+        data_tests: [not_null]

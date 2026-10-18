@@ -1,0 +1,19 @@
+name: nz_power
+version: "0.1.0"
+config-version: 2
+profile: nz_power
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+vars:
+  # 相对路径，必须从项目根目录运行 dbt（见 README）
+  raw_prices_glob: "data/raw/prices/*.csv"
+
+models:
+  nz_power:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
