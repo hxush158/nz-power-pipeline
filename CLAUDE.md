@@ -18,5 +18,9 @@ Help in a way that keeps the owner in control of design and verification.
 - Do not run git commit or push. The owner commits.
 
 ## Stack
-- Python managed by uv (`uv run ...`), DuckDB, pytest, ruff. Later: dbt, Terraform, AWS.
+- Python managed by uv (`uv run ...`), DuckDB, pytest, ruff, dbt (dbt-duckdb).
+- Azure (ADLS Gen2) for raw storage. Later: Snowflake, Airflow, GitHub Actions.
+- Models and their tests live under `dbt/` (models, unit tests in YAML, singular tests in `dbt/tests/`).
+  Run from the project root: `uv run dbt build --project-dir dbt --profiles-dir dbt`.
+  Python tests (ingest, upload): `uv run pytest`.
 - Data under data/ is never committed.
