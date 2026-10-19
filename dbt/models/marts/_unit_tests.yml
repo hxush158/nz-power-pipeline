@@ -1,0 +1,212 @@
+version: 2
+
+# dbt unit test：给模型手写几行假的上游数据（given），再写出期望输出（expect），
+# 不读真实 CSV。expect 里只写关心的列。
+
+unit_tests:
+
+  # ---------- dim_node ----------
+  - name: dim_node_n1_folds_case
+    description: aby0111 与 ABY0111 是同一个节点，折叠成 1 行，node_id 存大写。
+    model: dim_node
+    given:
+      - input: ref('stg_prices')
+        rows:
+          - {node_id: aby0111}
+          - {node_id: ABY0111}
+    expect:
+      rows:
+        - {node_id: ABY0111}
+
+  - name: dim_node_n2_excludes_empty_ids
+    description: NULL、空字符串、全空格的 node_id 没有身份，被排除。
+    model: dim_node
+    given:
+      - input: ref('stg_prices')
+        rows:
+          - {node_id: null}
+          - {node_id: ''}
+          - {node_id: '   '}
+          - {node_id: ABY0111}
+    expect:
+      rows:
+        - {node_id: ABY0111}
+
+  - name: dim_node_n3_keeps_leading_space_as_other_value
+    description: 只折叠大小写，不 trim；带前导空格的值是另一个值，原样保留。
+    model: dim_node
+    given:
+      - input: ref('stg_prices')
+        rows:
+          - {node_id: ABY0111}
+          - {node_id: ' ABY0111'}
+    expect:
+      rows:
+        - {node_id: ABY0111}
+        - {node_id: ' ABY0111'}
+
+  # ---------- fact_electricity_price ----------
+  - name: fact_f1_keeps_final_and_interim
+    description: 同一时段同一节点的 final 与 interim 是两个版本，两行并存。
+    model: fact_electricity_price
+    given:
+      - input: ref('stg_prices')
+        rows:
+          - {trading_date: '2026-10-13', trading_period: 1, node_id: ABY0111, price_nzd_per_mwh: 50.5, price_version: final, source_file: 20261013_final.csv}
+          - {trading_date: '2026-10-13', trading_period: 1, node_id: ABY0111, price_nzd_per_mwh: 40.25, price_version: interim, source_file: 20261013_interim.csv}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20261013, trading_date: '2026-10-13'}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026101301, date_key: 20261013, trading_period: 1}
+      - input: ref('dim_node')
+        rows:
+          - {node_key: 111, node_id: ABY0111}
+    expect:
+      rows:
+        - {period_key: 2026101301, node_key: 111, price_version: final, price_nzd_per_mwh: 50.50}
+        - {period_key: 2026101301, node_key: 111, price_version: interim, price_nzd_per_mwh: 40.25}
+
+  - name: fact_f2_joins_node_case_insensitively
+    description: stg 里的小写 aby0111 能关联上大写的 dim_node，node_key 与 dim_node 一致。
+    model: fact_electricity_price
+    given:
+      - input: ref('stg_prices')
+        rows:
+          - {trading_date: '2026-10-13', trading_period: 1, node_id: aby0111, price_nzd_per_mwh: 50.5, price_version: final, source_file: 20261013_final.csv}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20261013, trading_date: '2026-10-13'}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026101301, date_key: 20261013, trading_period: 1}
+      - input: ref('dim_node')
+        rows:
+          - {node_key: 111, node_id: ABY0111}
+    expect:
+      rows:
+        - {period_key: 2026101301, node_key: 111, price_version: final, price_nzd_per_mwh: 50.50}
+
+  - name: fact_f3_drops_row_without_node
+    description: 找不到对应节点的行被 inner join 丢弃（对账测试要抓的就是这种情况）。
+    model: fact_electricity_price
+    given:
+      - input: ref('stg_prices')
+        rows:
+          - {trading_date: '2026-10-13', trading_period: 1, node_id: ABY0111, price_nzd_per_mwh: 50.5, price_version: final, source_file: 20261013_final.csv}
+          - {trading_date: '2026-10-13', trading_period: 1, node_id: ZZZ9999, price_nzd_per_mwh: 60.0, price_version: final, source_file: 20261013_final.csv}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20261013, trading_date: '2026-10-13'}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026101301, date_key: 20261013, trading_period: 1}
+      - input: ref('dim_node')
+        rows:
+          - {node_key: 111, node_id: ABY0111}
+    expect:
+      rows:
+        - {period_key: 2026101301, node_key: 111, price_version: final, price_nzd_per_mwh: 50.50}
+
+  # ---------- mart_current_price ----------
+  - name: current_c1_prefers_final
+    description: 同一时段同一节点既有 final 又有 interim，取 final。
+    model: mart_current_price
+    given:
+      - input: ref('fact_electricity_price')
+        rows:
+          - {period_key: 2026101301, node_key: 111, price_version: final, price_nzd_per_mwh: 90.00, source_file: 20261013_final.csv}
+          - {period_key: 2026101301, node_key: 111, price_version: interim, price_nzd_per_mwh: 80.00, source_file: 20261013_interim.csv}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026101301, date_key: 20261013, trading_period: 1}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20261013, trading_date: '2026-10-13'}
+      - input: ref('dim_node')
+        rows:
+          - {node_key: 111, node_id: ABY0111}
+    expect:
+      rows:
+        - {period_key: 2026101301, node_key: 111, price_nzd_per_mwh: 90.00, price_version: final}
+
+  - name: current_c2_falls_back_to_interim
+    description: 只有 interim 时取 interim。
+    model: mart_current_price
+    given:
+      - input: ref('fact_electricity_price')
+        rows:
+          - {period_key: 2026101301, node_key: 111, price_version: interim, price_nzd_per_mwh: 80.00, source_file: 20261013_interim.csv}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026101301, date_key: 20261013, trading_period: 1}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20261013, trading_date: '2026-10-13'}
+      - input: ref('dim_node')
+        rows:
+          - {node_key: 111, node_id: ABY0111}
+    expect:
+      rows:
+        - {period_key: 2026101301, node_key: 111, price_nzd_per_mwh: 80.00, price_version: interim}
+
+  # ---------- mart_daily_price ----------
+  - name: daily_d1_average_rounds_and_counts_interim
+    description: 3 个时段 10.00 / 20.00 / 25.55（其中 1 个 interim），均价 18.5167 四舍五入为 18.52。
+    model: mart_daily_price
+    given:
+      - input: ref('mart_current_price')
+        rows:
+          - {trading_date: '2026-10-13', node_key: 111, node_id: ABY0111, price_nzd_per_mwh: 10.00, price_version: final}
+          - {trading_date: '2026-10-13', node_key: 111, node_id: ABY0111, price_nzd_per_mwh: 20.00, price_version: final}
+          - {trading_date: '2026-10-13', node_key: 111, node_id: ABY0111, price_nzd_per_mwh: 25.55, price_version: interim}
+    expect:
+      rows:
+        - {trading_date: '2026-10-13', node_key: 111, avg_price: 18.52, min_price: 10.00, max_price: 25.55, period_count: 3, interim_period_count: 1}
+
+  # ---------- v_dim_node ----------
+  - name: v_dim_node_v1_first_seen_date
+    description: 节点 A 从全局最早日（10-01）开始，是基线节点，为 NULL；节点 B 从 10-05 开始，是 10-05。
+    model: v_dim_node
+    given:
+      - input: ref('fact_electricity_price')
+        rows:
+          - {period_key: 2026100101, node_key: 1}
+          - {period_key: 2026100501, node_key: 2}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026100101, date_key: 20261001}
+          - {period_key: 2026100501, date_key: 20261005}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20261001, trading_date: '2026-10-01'}
+          - {date_key: 20261005, trading_date: '2026-10-05'}
+      - input: ref('dim_node')
+        rows:
+          - {node_key: 1, node_id: AAA0001}
+          - {node_key: 2, node_id: BBB0002}
+    expect:
+      rows:
+        - {node_id: AAA0001, first_seen_date: null}
+        - {node_id: BBB0002, first_seen_date: '2026-10-05'}
+
+  - name: fact_f4_keeps_negative_prices
+    description: 负价格是真实的市场价格，原样保留。
+    model: fact_electricity_price
+    given:
+      - input: ref('stg_prices')
+        rows:
+          - {trading_date: '2026-10-13', trading_period: 1, node_id: ABY0111, price_nzd_per_mwh: -12.34, price_version: final, source_file: 20261013_final.csv}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20261013, trading_date: '2026-10-13'}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026101301, date_key: 20261013, trading_period: 1}
+      - input: ref('dim_node')
+        rows:
+          - {node_key: 111, node_id: ABY0111}
+    expect:
+      rows:
+        - {period_key: 2026101301, node_key: 111, price_version: final, price_nzd_per_mwh: -12.34}
