@@ -12,3 +12,10 @@ __pycache__/
 dbt/target/
 dbt/logs/
 dbt/dbt_packages/
+
+# terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfvars
+terraform/crash.log
