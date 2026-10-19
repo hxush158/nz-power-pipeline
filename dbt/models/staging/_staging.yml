@@ -3,27 +3,34 @@ version: 2
 models:
   - name: stg_prices
     description: >
-      原始 EMI 价格 CSV 的统一输入层（视图）。粒度：文件中的一行
-      = trading_date × trading_period × node_id × price_version。
+      原始 EMI 价格 CSV 的统一输入层（视图），只做改列名、转类型、从文件名取出价格版本，
+      不做业务判断。粒度：文件中的一行 = 交易日 × 交易时段 × 节点 × 价格版本。
+      数据来源：Electricity Authority（新西兰）EMI 网站的 Final / Interim Energy Prices，CC BY 4.0。
     columns:
       - name: trading_date
-        description: 交易日（新西兰日期）。
+        description: "交易日（新西兰本地日期），来自源文件 TradingDate，格式 YYYY-MM-DD。"
         data_tests: [not_null]
       - name: trading_period
-        description: 交易时段编号，从当地午夜起每 30 分钟一个（1–50）。
+        description: >
+          半小时交易时段编号，来自源文件 TradingPeriod。从当地午夜起按实际流逝的 30 分钟编号：
+          普通日 1–48，夏令时结束日 1–50，夏令时开始日 1–46。
         data_tests: [not_null]
       - name: node_id
-        description: 价格节点代码（如 ABY0111），按字符串读取，未清洗。
+        description: >
+          价格节点（point of connection）代码，如 ABY0111，来自源文件 PointOfConnection。
+          按字符串读取并保持原样（不 trim、不转大小写），脏数据交给后面的测试发现。
         data_tests: [not_null]
       - name: price_nzd_per_mwh
-        description: 价格，NZD / MWh。
+        description: "该节点、该时段的电价，单位 NZD / MWh，来自源文件 DollarsPerMegawattHour。可能为负价。"
       - name: price_version
-        description: 来自文件名，final 或 interim。
+        description: >
+          价格版本，从文件名取出：final（最终价，文件名 YYYYMMDD_final.csv）
+          或 interim（临时价，YYYYMMDD_interim.csv）。
         data_tests:
           - not_null
           - accepted_values:
               arguments:
                 values: [final, interim]
       - name: source_file
-        description: 来源文件名（不含目录）。
+        description: "来源文件名（不含目录），用于追溯这一行来自哪个文件。"
         data_tests: [not_null]

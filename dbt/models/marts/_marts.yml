@@ -2,39 +2,59 @@ version: 2
 
 models:
   - name: dim_date
-    description: 日历维度，每个日历日一行（2020-01-01 ~ 2030-12-31）。粒度：一天。
+    description: >
+      日历维度，每个日历日一行，预生成 2020-01-01 ~ 2030-12-31。粒度：一天。
     columns:
       - name: date_key
-        description: YYYYMMDD 整数键。
+        description: "日期代理键，YYYYMMDD 整数，如 20261013。"
         data_tests: [unique, not_null]
       - name: trading_date
-        description: 日期。
+        description: "日期（DATE）。"
         data_tests: [unique, not_null]
+      - name: year
+        description: "年份。"
+      - name: month
+        description: "月份，1–12。"
+      - name: quarter
+        description: "日历季度（1–3 月 = 1），不是新西兰财年。"
       - name: day_of_week
-        description: ISO 星期，周一 = 1。
+        description: "ISO 星期，周一 = 1，周日 = 7。"
         data_tests:
           - accepted_values:
               arguments:
                 values: [1, 2, 3, 4, 5, 6, 7]
                 quote: false
+      - name: is_weekend
+        description: "是否周末（周六或周日）。不含新西兰公共假日。"
 
   - name: dim_trading_period
     description: >
       交易时段维度。粒度：交易日 × 交易时段；正常日 48 行，夏令时切换日 46 或 50 行。
+      时间由 DuckDB 按 Pacific/Auckland 时区规则换算，不手算偏移。
     columns:
       - name: period_key
-        description: date_key * 100 + trading_period。
+        description: "时段代理键 = date_key * 100 + trading_period，如 2026101301。"
         data_tests: [unique, not_null]
       - name: date_key
-        description: 指向 dim_date。
+        description: "所属交易日，指向 dim_date。"
         data_tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('dim_date')
                 field: date_key
+      - name: trading_period
+        description: "当天的时段编号，从当地午夜起每 30 分钟一个（1–50）。"
+      - name: period_start_utc
+        description: "时段开始的绝对时刻（带时区，TIMESTAMPTZ）。"
+      - name: period_end_utc
+        description: "时段结束的绝对时刻，等于开始时刻加 30 分钟。"
+      - name: period_start_local
+        description: >
+          时段开始的新西兰墙上时钟（不带时区）。夏令时结束日会出现重复读数，
+          所以不能单独当键，必须配合 period_key 使用。
       - name: periods_in_day
-        description: 当天的时段总数。
+        description: "当天的时段总数：普通日 48，夏令时结束日 50，夏令时开始日 46。"
         data_tests:
           - accepted_values:
               arguments:
@@ -42,22 +62,34 @@ models:
                 quote: false
 
   - name: dim_node
-    description: 价格节点维度。粒度：一个节点（大写 node_id）。
+    description: >
+      价格节点维度。粒度：一个节点（按大写 node_id 区分）。节点身份大小写不敏感，
+      aby0111 与 ABY0111 是同一节点；空 node_id 没有身份，不进入本表。
     columns:
       - name: node_key
-        description: hash(大写 node_id) 得到的稳定整数键。
+        description: >
+          节点代理键 = hash(大写 node_id) 右移 1 位转 BIGINT。同一个 node_id 永远得到同一个键，
+          所以整表重建时键不变。事实表加载必须用同一个表达式。
         data_tests: [unique, not_null]
       - name: node_id
-        description: 大写的节点代码。
+        description: "大写的节点代码，如 ABY0111。"
         data_tests: [unique, not_null]
+      - name: node_name
+        description: "节点名称。目前为 NULL，之后由 EMI 节点参考数据补充。"
+      - name: island
+        description: "所在岛屿。目前为 NULL，之后由参考数据补充。"
+      - name: region
+        description: "所在区域。目前为 NULL，之后由参考数据补充。"
 
   - name: fact_electricity_price
     description: >
-      价格事实表。粒度：交易时段 × 节点 × 版本（interim / final）。
+      价格事实表。业务粒度：交易日 × 交易时段 × 节点；存储粒度再加价格版本
+      （interim / final），两个版本是同一业务事实的不同发布状态，不可混在一起做普通聚合。
+      整表重建，由 stg_prices 全量构建，重复加载不产生重复行。
       主键 (period_key, node_key, price_version) 的唯一性由 tests/ 下的单独测试检查。
     columns:
       - name: period_key
-        description: 指向 dim_trading_period。
+        description: "指向 dim_trading_period。事实表不含 date_key，日期通过 period_key 关联。"
         data_tests:
           - not_null
           - relationships:
@@ -65,7 +97,7 @@ models:
                 to: ref('dim_trading_period')
                 field: period_key
       - name: node_key
-        description: 指向 dim_node。
+        description: "指向 dim_node。"
         data_tests:
           - not_null
           - relationships:
@@ -73,37 +105,62 @@ models:
                 to: ref('dim_node')
                 field: node_key
       - name: price_version
-        description: final 或 interim。
+        description: "价格版本：final 或 interim。"
         data_tests:
           - not_null
           - accepted_values:
               arguments:
                 values: [final, interim]
       - name: price_nzd_per_mwh
-        description: 价格，NZD / MWh，保留 2 位小数。
+        description: "价格，NZD / MWh，保留 2 位小数（DECIMAL(18,2)）。可能为负价。"
       - name: source_file
-        description: 来源文件名，用于追溯。
+        description: "来源文件名，用于追溯。"
         data_tests: [not_null]
 
   - name: v_dim_node
     description: >
       dim_node 加派生列 first_seen_date 的视图。粒度：一个节点。
+      单独做成视图而不是 dim_node 的一列，避免 dim_node 与事实表之间的循环依赖。
     columns:
       - name: node_key
+        description: "节点代理键，同 dim_node。"
         data_tests: [unique, not_null]
+      - name: node_id
+        description: "大写的节点代码。"
+      - name: node_name
+        description: "节点名称，目前为 NULL。"
+      - name: island
+        description: "所在岛屿，目前为 NULL。"
+      - name: region
+        description: "所在区域，目前为 NULL。"
       - name: first_seen_date
-        description: 节点在事实表中首次出现的交易日；基线节点为 NULL。
+        description: >
+          该节点在事实表中出现的最早交易日（不区分版本）。如果等于事实表里的全局最早交易日，
+          则为 NULL（基线节点，真实起点未知）。每次查询时重算，回填更早的数据后会自动更新。
 
   - name: mart_current_price
     description: >
-      每个时段 × 节点的当前最佳价格：有 final 用 final，否则用 interim。
-      粒度：交易时段 × 节点。
+      每个交易时段 × 节点的当前最佳价格：有 final 取 final，否则取 interim。
+      粒度：交易时段 × 节点。下游日均价、趋势和 BI 都基于此表，避免重复计数。
     columns:
       - name: period_key
+        description: "指向 dim_trading_period。"
         data_tests: [not_null]
       - name: node_key
+        description: "指向 dim_node。"
         data_tests: [not_null]
+      - name: trading_date
+        description: "交易日。"
+      - name: trading_period
+        description: "当天的时段编号（1–50）。"
+      - name: period_start_local
+        description: "时段开始的新西兰墙上时钟（不带时区），方便 BI 直接使用。"
+      - name: node_id
+        description: "大写的节点代码。"
+      - name: price_nzd_per_mwh
+        description: "选中版本的价格，NZD / MWh。"
       - name: price_version
+        description: "选中的是哪个版本：final，或没有 final 时的 interim。"
         data_tests:
           - not_null
           - accepted_values:
@@ -112,15 +169,26 @@ models:
 
   - name: mart_daily_price
     description: >
-      每个交易日 × 节点的日汇总（均价、最低、最高、时段数、临时价时段数）。
-      粒度：交易日 × 节点。
+      每个交易日 × 节点的日汇总，基于 mart_current_price。粒度：交易日 × 节点。
+      所有交易时段都是 30 分钟，所以简单平均等同于时间加权。
     columns:
       - name: trading_date
+        description: "交易日。"
         data_tests: [not_null]
       - name: node_key
+        description: "指向 dim_node。"
         data_tests: [not_null]
+      - name: node_id
+        description: "大写的节点代码。"
       - name: avg_price
+        description: "当天各时段价格的简单平均，四舍五入保留 2 位，NZD / MWh。"
         data_tests: [not_null]
+      - name: min_price
+        description: "当天最低价。"
+      - name: max_price
+        description: "当天最高价。"
       - name: period_count
-        description: 当天有价格的时段数（正常日 48，夏令时切换日 46 或 50）。
+        description: "当天有价格的时段数：正常日 48，夏令时结束日 50，夏令时开始日 46。"
         data_tests: [not_null]
+      - name: interim_period_count
+        description: "当天仍在使用临时价（interim）的时段数；为 0 表示当天日均价已完全是最终价。"
