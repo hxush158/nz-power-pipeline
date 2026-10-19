@@ -34,6 +34,17 @@ resource "azurerm_storage_container" "raw" {
   container_access_type = "private"
 }
 
+# Terraform 状态文件的存放容器（私有）。状态里包含存储账号的访问密钥，不能公开，也不能提交到仓库。
+resource "azurerm_storage_container" "tfstate" {
+  name                  = "tfstate"
+  storage_account_id    = azurerm_storage_account.raw.id
+  container_access_type = "private"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
 # 订阅级月度预算：实际花费达到 50% 和 90%、预测花费达到 100% 时发邮件。
 data "azurerm_subscription" "current" {}
 
