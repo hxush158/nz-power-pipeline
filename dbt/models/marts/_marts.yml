@@ -85,7 +85,8 @@ models:
     description: >
       价格事实表。业务粒度：交易日 × 交易时段 × 节点；存储粒度再加价格版本
       （interim / final），两个版本是同一业务事实的不同发布状态，不可混在一起做普通聚合。
-      整表重建，由 stg_prices 全量构建，重复加载不产生重复行。
+      增量模型：每次重新处理已加载数据里最晚交易日往前 7 天的数据（var fact_lookback_days），
+      按主键先删后插，窗口内被修订的价格会覆盖旧值，重复加载不产生重复行。
       主键 (period_key, node_key, price_version) 的唯一性由 tests/ 下的单独测试检查。
     columns:
       - name: period_key
@@ -115,6 +116,11 @@ models:
         description: "价格，NZD / MWh，保留 2 位小数（DECIMAL(18,2)）。可能为负价。"
       - name: source_file
         description: "来源文件名，用于追溯。"
+        data_tests: [not_null]
+      - name: loaded_at
+        description: >
+          这一行是哪次 dbt 运行写入的（带时区的时刻）。审计用，不参与主键；
+          被回看窗口重新处理的行会得到新的 loaded_at。
         data_tests: [not_null]
 
   - name: v_dim_node

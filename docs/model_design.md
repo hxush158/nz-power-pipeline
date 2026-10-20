@@ -8,7 +8,7 @@
 
 - **业务事实粒度**：一个交易日 × 一个交易时段 × 一个节点，对应一条价格观测。
 - **存储粒度**：一个交易日 × 一个交易时段 × 一个节点 × 一个发布版本（`interim` / `final`）。两个版本是同一业务事实的不同发布状态，**不可混在一起做普通聚合**。
-- **修订策略**：整表重建，由文件全量构建，重复加载不产生重复行。
+- **修订策略**：事实表是增量模型：每次重新处理已加载数据里最晚交易日往前 7 天的数据（`fact_lookback_days`），按主键 (`period_key`, `node_key`, `price_version`) 先删后插，窗口内被修订的价格覆盖旧值，重复加载不产生重复行。窗口之外的历史修订用 `--full-refresh` 重建。final 到达时新增一行，不删除 interim。
 
 ---
 
@@ -20,7 +20,7 @@
 | `dim_trading_period` | 每个**交易日 + 交易时段**一行；**PK** `period_key` (`BIGINT`) | `date_key INTEGER`, `trading_period SMALLINT`, `period_start_utc TIMESTAMPTZ`, `period_end_utc TIMESTAMPTZ`, `period_start_local TIMESTAMP`, `periods_in_day SMALLINT`, `period_key = date_key * 100 + trading_period` | `UNIQUE(date_key, trading_period)`；`date_key` → `dim_date`；具体时间须依可信交易时段规则生成 |
 | `dim_node` | 每个价格节点一行；**PK** `node_key` (`BIGINT`) | `node_id VARCHAR`, `node_name VARCHAR NULL`, `island VARCHAR NULL`, `region VARCHAR NULL` | `node_id` 唯一；缺失属性暂为 `NULL`，后续从 EMI 节点参考数据补全 |
 | `v_dim_node` | 每个节点一行（视图，建在 dim_node 之上）**PK** `node_key` (`BIGINT`) | `node_id VARCHAR`, `node_name VARCHAR NULL`, `island VARCHAR NULL`, `region VARCHAR NULL`，`first_seen_date DATE` | 最早交易日，等于全局最小日则为 NULL；派生，不物理存储 |
-| `fact_electricity_price` | 每个交易日 × 时段 × 节点 × 版本一行；**PK** (`period_key`, `node_key`, `price_version`) | `period_key BIGINT`, `node_key BIGINT`, `price_version VARCHAR`, `price_nzd_per_mwh DECIMAL(18,2)`, `source_file VARCHAR` | 版本仅允许 `interim` / `final`；`period_key`、`node_key` 为外键；事实表不含 `date_key`，日期通过 `period_key` 关联。 |
+| `fact_electricity_price` | 每个交易日 × 时段 × 节点 × 版本一行；**PK** (`period_key`, `node_key`, `price_version`) | `period_key BIGINT`, `node_key BIGINT`, `price_version VARCHAR`, `price_nzd_per_mwh DECIMAL(18,2)`, `source_file VARCHAR`, `loaded_at TIMESTAMPTZ` | 增量加载（delete+insert，回看 7 天）；`loaded_at` 记录该行由哪次 dbt 运行写入，仅供审计；版本仅允许 `interim` / `final`；`period_key`、`node_key` 为外键；事实表不含 `date_key`，日期通过 `period_key` 关联。 |
 | `mart_current_price` | 每个交易时段 × 节点一行；**PK**  `period_key` (`BIGINT`), `node_key` (`BIGINT`) | `trading_date DATE`, `trading_period SMALLINT`, `period_start_local TIMESTAMP`, `node_id VARCHAR`, `price_version VARCHAR`, `price_nzd_per_mwh DECIMAL(18,2)`| 表（非视图）、整表重建、有 final 取 final 否则 interim |
 | `mart_daily_price` | 粒度每个交易日 × 节点；**PK**  `trading_date`(`DATE`) , `node_key` (`BIGINT`) | `node_id VARCHAR`, `avg_price DECIMAL(18,2)`, `min_price DECIMAL(18,2)`, `max_price DECIMAL(18,2)`, `period_count BIGINT`, `interim_period_count BIGINT`| 表（非视图）、整表重建；基于 `mart_current_price` 汇总；简单平均，等同于时间加权（所有时段都是 30 分钟）；`interim_period_count` 表示当天使用临时价的时段数 |
 
@@ -55,7 +55,7 @@
 
 ## 4. 五项关键设计决策
 
-1. **价格粒度与版本**：保留 `interim` 和 `final` 两个业务版本；同一版本重新下载后，整表重建（由 `stg_prices` 全量构建）即可得到相同结果，不产生重复事实记录；增量加载放到 dbt。
+1. **价格粒度与版本**：保留 `interim` 和 `final` 两个业务版本；同一版本重新下载后，整表重建（由 `stg_prices` 全量构建）即可得到相同结果，不产生重复事实记录；事实表已在 dbt 中改为增量模型，规则见第 1 节「修订策略」。
 2. **夏令时**：交易时段编号不是固定本地钟点。`dim_trading_period` 依据交易日和市场时段规则记录实际 UTC 起止时间及新西兰本地时间，支持 46/48/50 时段日；禁止仅以 `(trading_period - 1) × 30分钟` 推算所有日期的本地时间。时段长度与源文件语义需在 ingestion 时核验。
 3. **节点维度**：先从价格数据中抽取唯一 `node_id` 建 `dim_node`，不等待岛屿/区域属性；`island`、`region` 后续通过 EMI 参考数据补齐，暂不引入 SCD Type 2。每次加载把新 `node_id` 补进 `dim_node`。节点身份按大写比较（`aby0111` 与 `ABY0111` 是同一节点），`node_key` 为大写 `node_id` 的哈希，保证稳定、可整表重建；空 `node_id` 不进入维度。`first_seen_date` 不物理存储，由视图 `v_dim_node` 派生：取事实表中该节点的最早交易日，等于全局最早交易日则为 `NULL`（基线节点），每次重算，所以重跑和回填历史数据都是幂等的。
 4. **发电量数据**：当前只做价格事实表；第 9 周另建 `fact_generation`（粒度依实际数据源确认），尽可能复用一致性日期、时段及节点维度，但必须先核实发电计量对象和价格节点是否可映射。

@@ -49,6 +49,9 @@ unit_tests:
   - name: fact_f1_keeps_final_and_interim
     description: 同一时段同一节点的 final 与 interim 是两个版本，两行并存。
     model: fact_electricity_price
+    overrides:
+      macros:
+        is_incremental: false
     given:
       - input: ref('stg_prices')
         rows:
@@ -71,6 +74,9 @@ unit_tests:
   - name: fact_f2_joins_node_case_insensitively
     description: stg 里的小写 aby0111 能关联上大写的 dim_node，node_key 与 dim_node 一致。
     model: fact_electricity_price
+    overrides:
+      macros:
+        is_incremental: false
     given:
       - input: ref('stg_prices')
         rows:
@@ -91,6 +97,9 @@ unit_tests:
   - name: fact_f3_drops_row_without_node
     description: 找不到对应节点的行被 inner join 丢弃（对账测试要抓的就是这种情况）。
     model: fact_electricity_price
+    overrides:
+      macros:
+        is_incremental: false
     given:
       - input: ref('stg_prices')
         rows:
@@ -194,6 +203,9 @@ unit_tests:
   - name: fact_f4_keeps_negative_prices
     description: 负价格是真实的市场价格，原样保留。
     model: fact_electricity_price
+    overrides:
+      macros:
+        is_incremental: false
     given:
       - input: ref('stg_prices')
         rows:
@@ -210,3 +222,88 @@ unit_tests:
     expect:
       rows:
         - {period_key: 2026101301, node_key: 111, price_version: final, price_nzd_per_mwh: -12.34}
+
+  # ---------- fact_electricity_price：增量运行 ----------
+  # 增量 unit test 的 expect 是"这次运行要插入的行"；旧行的删除由 dbt 按 unique_key 完成，
+  # 不在 SQL 里，所以这里测的是"窗口内的数据会被重新选中、窗口外的不会"。
+  - name: fact_i1_revised_final_in_window_is_selected_again
+    description: 窗口内被修订的 final 价格会被重新选中，带着新值去覆盖旧行。
+    model: fact_electricity_price
+    overrides:
+      macros:
+        is_incremental: true
+    given:
+      - input: ref('stg_prices')
+        rows:
+          - {trading_date: '2026-10-13', trading_period: 1, node_id: ABY0111, price_nzd_per_mwh: 60.0, price_version: final, source_file: 20261013_final.csv}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20261013, trading_date: '2026-10-13'}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026101301, date_key: 20261013, trading_period: 1}
+      - input: ref('dim_node')
+        rows:
+          - {node_key: 111, node_id: ABY0111}
+      - input: this
+        rows:
+          - {period_key: 2026101301, node_key: 111, price_version: final, price_nzd_per_mwh: 50.00, source_file: 20261013_final.csv}
+    expect:
+      rows:
+        - {period_key: 2026101301, node_key: 111, price_version: final, price_nzd_per_mwh: 60.00}
+
+  - name: fact_i2_rows_older_than_lookback_window_are_not_reprocessed
+    description: 已加载数据最晚是 10-13，窗口起点是 10-06；10-01 的行不处理，10-12 的行处理。
+    model: fact_electricity_price
+    overrides:
+      macros:
+        is_incremental: true
+    given:
+      - input: ref('stg_prices')
+        rows:
+          - {trading_date: '2026-10-01', trading_period: 1, node_id: ABY0111, price_nzd_per_mwh: 10.0, price_version: final, source_file: 20261001_final.csv}
+          - {trading_date: '2026-10-12', trading_period: 1, node_id: ABY0111, price_nzd_per_mwh: 20.0, price_version: final, source_file: 20261012_final.csv}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20261001, trading_date: '2026-10-01'}
+          - {date_key: 20261012, trading_date: '2026-10-12'}
+          - {date_key: 20261013, trading_date: '2026-10-13'}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026100101, date_key: 20261001, trading_period: 1}
+          - {period_key: 2026101201, date_key: 20261012, trading_period: 1}
+          - {period_key: 2026101301, date_key: 20261013, trading_period: 1}
+      - input: ref('dim_node')
+        rows:
+          - {node_key: 111, node_id: ABY0111}
+      - input: this
+        rows:
+          - {period_key: 2026101301, node_key: 111, price_version: final, price_nzd_per_mwh: 50.00, source_file: 20261013_final.csv}
+    expect:
+      rows:
+        - {period_key: 2026101201, node_key: 111, price_version: final, price_nzd_per_mwh: 20.00}
+
+  - name: fact_i3_incremental_run_on_empty_table_loads_everything
+    description: 已有的表是空的时，没有"最晚交易日"，不能因此什么都不加载。
+    model: fact_electricity_price
+    overrides:
+      macros:
+        is_incremental: true
+    given:
+      - input: ref('stg_prices')
+        rows:
+          - {trading_date: '2026-10-13', trading_period: 1, node_id: ABY0111, price_nzd_per_mwh: 50.0, price_version: final, source_file: 20261013_final.csv}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20261013, trading_date: '2026-10-13'}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026101301, date_key: 20261013, trading_period: 1}
+      - input: ref('dim_node')
+        rows:
+          - {node_key: 111, node_id: ABY0111}
+      - input: this
+        rows: []
+    expect:
+      rows:
+        - {period_key: 2026101301, node_key: 111, price_version: final, price_nzd_per_mwh: 50.00}
