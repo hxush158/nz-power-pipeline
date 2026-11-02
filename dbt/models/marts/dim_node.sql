@@ -14,7 +14,7 @@ with nodes as (
 )
 
 select
-    cast(hash(node_id) >> 1 as bigint) as node_key,
+    {{ nz_hash_key('node_id') }} as node_key,
     node_id,
     cast(null as varchar) as node_name,
     cast(null as varchar) as island,

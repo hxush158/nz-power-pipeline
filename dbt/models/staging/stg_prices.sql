@@ -7,15 +7,7 @@
 
 with raw as (
 
-    select
-        *,
-        regexp_extract(filename, '([^/\\]+)$', 1) as source_file
-    from read_csv(
-        '{{ var("raw_prices_glob") }}',
-        header = true,
-        filename = true,
-        types = {'PointOfConnection': 'VARCHAR'}
-    )
+    {{ nz_raw_prices() }}
 
 )
 
@@ -24,8 +16,7 @@ select
     cast(TradingPeriod as smallint) as trading_period,
     PointOfConnection as node_id,
     cast(DollarsPerMegawattHour as double) as price_nzd_per_mwh,
-    regexp_extract(source_file, '^[0-9]{8}_(final|interim)\.csv$', 1)
-        as price_version,
+    {{ nz_price_version('source_file') }} as price_version,
     source_file
 from raw
-where regexp_matches(source_file, '^[0-9]{8}_(final|interim)\.csv$')
+where {{ nz_is_price_file('source_file') }}

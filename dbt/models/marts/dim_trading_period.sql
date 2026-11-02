@@ -3,15 +3,15 @@
 --   period_start_utc = 当地午夜(换算为 UTC) + (trading_period - 1) * 30 分钟
 --   period_key       = date_key * 100 + trading_period
 --   period_start_local 是墙上时钟（不带时区），夏令时结束日会重复，不能单独当键。
---   当地时间由 DuckDB 按 Pacific/Auckland 规则换算，不手算偏移量。
+--   当地时间由数据库按 Pacific/Auckland 规则换算（见 macros/portable.sql），不手算偏移量。
 
 with day_bounds as (
 
     select
         date_key,
-        cast(trading_date as timestamp) at time zone 'Pacific/Auckland'
+        {{ nz_local_to_utc('cast(trading_date as timestamp)') }}
             as day_start_utc,
-        cast(trading_date + 1 as timestamp) at time zone 'Pacific/Auckland'
+        {{ nz_local_to_utc('cast(trading_date + 1 as timestamp)') }}
             as next_day_start_utc
     from {{ ref('dim_date') }}
 
@@ -23,7 +23,7 @@ day_lengths as (
         date_key,
         day_start_utc,
         cast(
-            (epoch(next_day_start_utc) - epoch(day_start_utc)) / 1800
+            ({{ nz_epoch_seconds('next_day_start_utc') }} - {{ nz_epoch_seconds('day_start_utc') }}) / 1800
             as smallint
         ) as periods_in_day
     from day_bounds
@@ -36,10 +36,10 @@ periods as (
         l.date_key,
         cast(p.trading_period as smallint) as trading_period,
         l.periods_in_day,
-        l.day_start_utc + to_minutes((p.trading_period - 1) * 30)
+        {{ nz_add_minutes('l.day_start_utc', '(p.trading_period - 1) * 30') }}
             as period_start_utc
     from day_lengths as l
-    cross join range(1, 51) as p(trading_period)
+    cross join {{ nz_period_numbers() }}
     where p.trading_period <= l.periods_in_day
 
 )
@@ -49,7 +49,7 @@ select
     date_key,
     trading_period,
     period_start_utc,
-    period_start_utc + to_minutes(30) as period_end_utc,
-    period_start_utc at time zone 'Pacific/Auckland' as period_start_local,
+    {{ nz_add_minutes('period_start_utc', '30') }} as period_end_utc,
+    {{ nz_utc_to_local('period_start_utc') }} as period_start_local,
     periods_in_day
 from periods

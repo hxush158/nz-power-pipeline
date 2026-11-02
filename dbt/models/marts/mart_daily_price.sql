@@ -11,7 +11,7 @@ select
     min(price_nzd_per_mwh) as min_price,
     max(price_nzd_per_mwh) as max_price,
     count(*) as period_count,
-    count(*) filter (where price_version = 'interim') as interim_period_count
+    {{ nz_count_if("price_version = 'interim'") }} as interim_period_count
 from {{ ref('mart_current_price') }}
 group by trading_date, node_key, node_id
 order by trading_date, node_id
