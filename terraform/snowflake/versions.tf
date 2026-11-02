@@ -17,5 +17,7 @@ provider "snowflake" {
   user              = var.snowflake_user
   authenticator     = "SNOWFLAKE_JWT"
   private_key       = file(pathexpand(var.snowflake_private_key_path))
-  role              = var.snowflake_role
+  # 私钥已加密时才需要；未加密的旧钥匙保持 null。
+  private_key_passphrase = var.snowflake_private_key_passphrase
+  role                   = var.snowflake_role
 }

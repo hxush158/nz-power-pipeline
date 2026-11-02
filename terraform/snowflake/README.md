@@ -22,3 +22,12 @@ Warehouse（X-Small，AUTO_SUSPEND = 60）、Resource Monitor、数据库 NZ_POW
     terraform plan
 
 `.terraform.lock.hcl` 要提交；`.terraform/`、`*.tfstate*`、`*.tfvars`、`*.p8` 已在 .gitignore。
+
+## Storage Integration
+`storage_integration.tf` 建 `INT_AZURE_RAW`，只放开 `raw/prices/`。apply 之后：
+
+1. 在 Snowflake 里运行 `DESC STORAGE INTEGRATION INT_AZURE_RAW;`，取出 `AZURE_CONSENT_URL` 和 `AZURE_MULTI_TENANT_APP_NAME`。
+2. 用 Azure 租户管理员账号打开 consent URL，点同意。
+3. 在 Azure 存储账号 `nzpowerhxu` 上，给上面那个应用（名字取 `AZURE_MULTI_TENANT_APP_NAME` 里下划线之前的部分）授予 `Storage Blob Data Reader`。授权生效可能要等几分钟。
+
+变量：`export TF_VAR_azure_tenant_id="$(az account show --query tenantId -o tsv)"`
