@@ -48,3 +48,15 @@ variable "chemq_reporter_public_key_path" {
   type        = string
   default     = "~/.snowflake/chemq_reporter.pub"
 }
+
+variable "dbt_user_name" {
+  description = "dbt 用的服务用户名（以 NZ_TRANSFORMER 身份在 STAGING/MART 建表建视图）。"
+  type        = string
+  default     = "DBT_SVC"
+}
+
+variable "dbt_public_key_path" {
+  description = "dbt 用户的公钥文件路径（私钥只留在本机，不进仓库）。"
+  type        = string
+  default     = "~/.snowflake/dbt_svc.pub"
+}
