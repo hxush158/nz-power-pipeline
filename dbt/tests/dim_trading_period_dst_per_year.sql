@@ -10,10 +10,10 @@ with per_day as (
 
 select
     d.year,
-    count(*) filter (where p.periods = 50) as days_with_50,
-    count(*) filter (where p.periods = 46) as days_with_46
+    {{ nz_count_if('p.periods = 50') }} as days_with_50,
+    {{ nz_count_if('p.periods = 46') }} as days_with_46
 from per_day as p
 inner join {{ ref('dim_date') }} as d on d.date_key = p.date_key
 group by d.year
-having count(*) filter (where p.periods = 50) <> 1
-    or count(*) filter (where p.periods = 46) <> 1
+having {{ nz_count_if('p.periods = 50') }} <> 1
+    or {{ nz_count_if('p.periods = 46') }} <> 1

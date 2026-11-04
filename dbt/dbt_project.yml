@@ -17,5 +17,7 @@ models:
   nz_power:
     staging:
       +materialized: view
+      +schema: STAGING
     marts:
       +materialized: table
+      +schema: CORE

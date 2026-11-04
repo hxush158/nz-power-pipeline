@@ -1,0 +1,12 @@
+version: 2
+
+# Snowflake 上的原始数据：由 sql/snowflake/03_copy_into.sql 从 Azure Blob 装进 RAW 表。
+# 本地 DuckDB 不用这个 source（stg_prices 直接读 CSV 文件，见 macros/portable.sql）。
+sources:
+  - name: raw
+    database: NZ_POWER
+    schema: RAW
+    tables:
+      - name: prices_raw
+        identifier: PRICES_RAW
+        description: "COPY INTO 装入的价格 CSV 原样内容，四个数据列都是字符串，另有 source_file（文件名）和 loaded_at。"

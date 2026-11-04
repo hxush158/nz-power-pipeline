@@ -3,6 +3,9 @@
 --   同键同版本重复属于上游错误，由事实表主键测试发现；
 --   这里用 source_file、价格兜底排序，保证输出确定。
 
+-- 对外暴露的三张表之一：放在 MART schema（ChemQ 只读用户可见），其余 dim/fact 在 CORE。
+{{ config(schema='MART') }}
+
 select
     f.period_key,
     f.node_key,

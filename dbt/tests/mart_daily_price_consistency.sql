@@ -1,13 +1,16 @@
 -- mart_daily_price：同一天同一节点只能有一行；period_count 之和必须等于
 -- mart_current_price 的行数（日汇总没有丢也没有重复计算时段）。
-select 'duplicate_day_node' as problem, count(*) as detail
+select 'duplicate_day_node' as problem, dup_rows as detail
 from (
-    select trading_date, node_key
-    from {{ ref('mart_daily_price') }}
-    group by trading_date, node_key
-    having count(*) > 1
+    select count(*) as dup_rows
+    from (
+        select trading_date, node_key
+        from {{ ref('mart_daily_price') }}
+        group by trading_date, node_key
+        having count(*) > 1
+    )
 )
-having count(*) > 0
+where dup_rows > 0
 
 union all
 

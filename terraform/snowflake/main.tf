@@ -5,7 +5,7 @@
 #       角色 NZ_LOADER / NZ_TRANSFORMER / NZ_REPORTER。
 
 locals {
-  schemas = toset(["RAW", "STAGING", "MART"])
+  schemas = toset(["RAW", "STAGING", "CORE", "MART"])
   roles   = toset(["NZ_LOADER", "NZ_TRANSFORMER", "NZ_REPORTER"])
 }
 

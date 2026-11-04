@@ -3,7 +3,7 @@
 --   等于事实表全局最早交易日时为 NULL（基线节点，真实起点未知）。
 --   单独做视图而不是 dim_node 的一列，避免 dim_node → fact → dim_node 的循环依赖。
 
-{{ config(materialized='view') }}
+{{ config(materialized='view', schema='MART') }}
 
 with fact_dates as (
 

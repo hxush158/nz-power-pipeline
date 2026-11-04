@@ -19,4 +19,4 @@ union all
 
 select 'not_30_minutes', period_key
 from ordered
-where period_end_utc - period_start_utc <> interval 30 minute
+where {{ nz_epoch_seconds('period_end_utc') }} - {{ nz_epoch_seconds('period_start_utc') }} <> 1800

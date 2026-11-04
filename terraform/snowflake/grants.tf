@@ -1,7 +1,8 @@
 # 权限设计（最小权限）：
 #   NZ_LOADER       只写 RAW（建表、建 Stage、建文件格式、往 RAW 表里加载数据）
-#   NZ_TRANSFORMER  读 RAW；在 STAGING、MART 里建表和视图（dbt 用）
-#   NZ_REPORTER     只读 MART（ChemQ 引擎用）；读不了 RAW 和 STAGING，也不能写任何东西
+#   NZ_TRANSFORMER  读 RAW；在 STAGING、CORE、MART 里建表和视图（dbt 用）
+#   NZ_REPORTER     只读 MART（ChemQ 引擎用）；读不了 RAW、STAGING、CORE，也不能写任何东西
+#   CORE 放 dim_* 和 fact_*：MART 里的视图以创建者（NZ_TRANSFORMER）的权限读它，所以不必开放给 NZ_REPORTER
 # 表和视图的 SELECT / INSERT 用 future grant：之后新建的对象自动获得权限。
 # 现在这些 schema 里还没有对象，所以不需要 "all" 形式的授权。
 
@@ -13,6 +14,7 @@ locals {
     loader_raw       = { role = "NZ_LOADER", schema = "RAW", privileges = ["USAGE", "CREATE TABLE", "CREATE STAGE", "CREATE FILE FORMAT"] }
     transformer_raw  = { role = "NZ_TRANSFORMER", schema = "RAW", privileges = ["USAGE"] }
     transformer_stg  = { role = "NZ_TRANSFORMER", schema = "STAGING", privileges = ["USAGE", "CREATE TABLE", "CREATE VIEW"] }
+    transformer_core = { role = "NZ_TRANSFORMER", schema = "CORE", privileges = ["USAGE", "CREATE TABLE", "CREATE VIEW"] }
     transformer_mart = { role = "NZ_TRANSFORMER", schema = "MART", privileges = ["USAGE", "CREATE TABLE", "CREATE VIEW"] }
     reporter_mart    = { role = "NZ_REPORTER", schema = "MART", privileges = ["USAGE"] }
   }

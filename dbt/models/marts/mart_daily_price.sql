@@ -3,6 +3,9 @@
 --   avg_price 四舍五入保留 2 位。
 --   interim_period_count = 当天用临时价的时段数，用来判断日均价是否已定稿。
 
+-- 对外暴露的三张表之一：放在 MART schema（ChemQ 只读用户可见），其余 dim/fact 在 CORE。
+{{ config(schema='MART') }}
+
 select
     trading_date,
     node_key,
