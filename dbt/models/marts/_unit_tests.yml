@@ -174,6 +174,67 @@ unit_tests:
       rows:
         - {trading_date: '2026-10-13', node_key: 111, avg_price: 18.52, min_price: 10.00, max_price: 25.55, period_count: 3, interim_period_count: 1}
 
+  - name: daily_d2_tie_rounds_away_from_zero_positive
+    description: 10.00 与 10.01 的平均是 10.005，恰好在中间，远离零进位得 10.01（浮点数运算可能得到 10.00）。
+    model: mart_daily_price
+    given:
+      - input: ref('mart_current_price')
+        rows:
+          - {trading_date: '2026-10-13', node_key: 111, node_id: ABY0111, price_nzd_per_mwh: 10.00, price_version: final}
+          - {trading_date: '2026-10-13', node_key: 111, node_id: ABY0111, price_nzd_per_mwh: 10.01, price_version: final}
+    expect:
+      rows:
+        - {trading_date: '2026-10-13', node_key: 111, avg_price: 10.01, period_count: 2}
+
+  - name: daily_d3_tie_rounds_away_from_zero_negative
+    description: -10.00 与 -10.01 的平均是 -10.005，负价也远离零进位得 -10.01（不是 -10.00）。
+    model: mart_daily_price
+    given:
+      - input: ref('mart_current_price')
+        rows:
+          - {trading_date: '2026-10-13', node_key: 111, node_id: ABY0111, price_nzd_per_mwh: -10.00, price_version: final}
+          - {trading_date: '2026-10-13', node_key: 111, node_id: ABY0111, price_nzd_per_mwh: -10.01, price_version: final}
+    expect:
+      rows:
+        - {trading_date: '2026-10-13', node_key: 111, avg_price: -10.01, period_count: 2}
+
+  - name: daily_d4_tie_around_zero
+    description: 0.00 与 0.01 的平均 0.005 得 0.01；-0.01 与 0.00 的平均 -0.005 得 -0.01（对称，远离零）。
+    model: mart_daily_price
+    given:
+      - input: ref('mart_current_price')
+        rows:
+          - {trading_date: '2026-10-13', node_key: 111, node_id: ABY0111, price_nzd_per_mwh: 0.00, price_version: final}
+          - {trading_date: '2026-10-13', node_key: 111, node_id: ABY0111, price_nzd_per_mwh: 0.01, price_version: final}
+          - {trading_date: '2026-10-13', node_key: 112, node_id: BEN2201, price_nzd_per_mwh: -0.01, price_version: final}
+          - {trading_date: '2026-10-13', node_key: 112, node_id: BEN2201, price_nzd_per_mwh: 0.00, price_version: final}
+    expect:
+      rows:
+        - {trading_date: '2026-10-13', node_key: 111, avg_price: 0.01, period_count: 2}
+        - {trading_date: '2026-10-13', node_key: 112, avg_price: -0.01, period_count: 2}
+
+  - name: daily_d5_tie_cases_that_float_average_gets_wrong
+    description: >
+      旧写法 round(avg(DECIMAL), 2) 在 DuckDB 上会算错的真实反例（avg 先变成 DOUBLE）：
+      0.28 与 0.29 的平均 0.285 旧写法得 0.28，1.00 与 1.01 的平均 1.005 旧写法得 1.00，
+      负价同理。正确结果都是远离零进位：0.29、1.01、-0.29。
+      （在 0–1000 元的相邻两分价格里，旧写法约有 4.6% 的组合算错，见 sql/explore/avg_round_find_failing_case.sql。）
+    model: mart_daily_price
+    given:
+      - input: ref('mart_current_price')
+        rows:
+          - {trading_date: '2026-10-13', node_key: 111, node_id: ABY0111, price_nzd_per_mwh: 0.28, price_version: final}
+          - {trading_date: '2026-10-13', node_key: 111, node_id: ABY0111, price_nzd_per_mwh: 0.29, price_version: final}
+          - {trading_date: '2026-10-13', node_key: 112, node_id: BEN2201, price_nzd_per_mwh: -0.28, price_version: final}
+          - {trading_date: '2026-10-13', node_key: 112, node_id: BEN2201, price_nzd_per_mwh: -0.29, price_version: final}
+          - {trading_date: '2026-10-13', node_key: 113, node_id: HLY2201, price_nzd_per_mwh: 1.00, price_version: final}
+          - {trading_date: '2026-10-13', node_key: 113, node_id: HLY2201, price_nzd_per_mwh: 1.01, price_version: final}
+    expect:
+      rows:
+        - {trading_date: '2026-10-13', node_key: 111, avg_price: 0.29, period_count: 2}
+        - {trading_date: '2026-10-13', node_key: 112, avg_price: -0.29, period_count: 2}
+        - {trading_date: '2026-10-13', node_key: 113, avg_price: 1.01, period_count: 2}
+
   # ---------- v_dim_node ----------
   - name: v_dim_node_v1_first_seen_date
     description: 节点 A 从全局最早日（10-01）开始，是基线节点，为 NULL；节点 B 从 10-05 开始，是 10-05。

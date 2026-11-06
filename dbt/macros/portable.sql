@@ -164,3 +164,34 @@
 
 {% macro duckdb__nz_utc_literal(text) %}timestamptz '{{ text }}+00'{% endmacro %}
 {% macro snowflake__nz_utc_literal(text) %}to_timestamp_ntz('{{ text }}'){% endmacro %}
+
+{# ---- 价格的平均值，四舍五入到 2 位小数（decimal(18,2)），全程精确运算，两个引擎结果逐行一致 ----
+   规则：四舍五入，恰好在中间时远离零进位（0.005 → 0.01，-0.005 → -0.01），与 Snowflake 的 ROUND 相同。
+   做法：价格先换成整数"分"求和，平均数的舍入用整数运算：
+        分数 = sign(S) * floor((2*|S| + n) / (2*n))      S = 分的总和，n = 行数
+   为什么不用 round(avg(x), 2)：DuckDB 对 DECIMAL 求 avg 返回 DOUBLE，x.xx5 在二进制里不精确，进位不稳定。
+   为什么 DuckDB 用 //：DuckDB 里 / 是浮点除法，// 才是整数除法。Snowflake 的 / 对整数给出精确小数，floor 后等价
+   （商的小数部分与整数的距离至少 1/(2n)，远大于小数位截断的误差）。
+   最后先转 bigint 再乘 0.01：避免 hugeint 乘 decimal 超过 38 位后悄悄变成 DOUBLE。
+   只能放在 group by 的聚合查询里（里面用了 sum / count）。 #}
+{% macro nz_avg_price_2dp(price_expr) %}
+    {{ return(adapter.dispatch('nz_avg_price_2dp', 'nz_power')(price_expr)) }}
+{% endmacro %}
+
+{% macro duckdb__nz_avg_price_2dp(price_expr) -%}
+cast(
+    cast(
+        sign(sum(cast({{ price_expr }} * 100 as bigint)))
+        * ((2 * abs(sum(cast({{ price_expr }} * 100 as bigint))) + count(*)) // (2 * count(*)))
+    as bigint) * 0.01
+as decimal(18, 2))
+{%- endmacro %}
+
+{% macro snowflake__nz_avg_price_2dp(price_expr) -%}
+cast(
+    cast(
+        sign(sum(cast({{ price_expr }} * 100 as bigint)))
+        * floor((2 * abs(sum(cast({{ price_expr }} * 100 as bigint))) + count(*)) / (2 * count(*)))
+    as bigint) * 0.01
+as decimal(18, 2))
+{%- endmacro %}

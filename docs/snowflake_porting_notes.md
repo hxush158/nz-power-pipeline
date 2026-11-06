@@ -38,7 +38,16 @@
 同一份指纹查询（`sql/snowflake/05_reconcile.sql` 和 `05_reconcile_duckdb.sql`）在两个引擎上各跑一次，14 项里 13 项逐行相同：
 行数 2,156,450、价格总和 137,078,471.80、246 个节点、日汇总 44,927 行、4 月 5 日 50 个时段、9 月 27 日 46 个时段、事实表 2,168,258 行等。
 
-**已知差异（不修）**：`daily_avg_price_sum` Snowflake 2,855,139.18，DuckDB 2,855,138.75，差 0.43。
-- 原因：`round(avg(price), 2)` 在"恰好落在 x.xx5"时的进位方式不同。DuckDB 的 `avg` 先转成浮点数，x.xx5 没法精确表示，进位不稳定；Snowflake 保持精确小数，按远离零方向进位。
+**已知差异（11-06 已修，见下）**：`daily_avg_price_sum` Snowflake 2,855,139.18，DuckDB 2,855,138.75，差 0.43。
+- 原因：`round(avg(price), 2)` 在"恰好落在 x.xx5"时的进位方式不同。DuckDB 的 `avg(DECIMAL)` 返回 DOUBLE，x.xx5 没法精确表示，进位不稳定；Snowflake 保持精确小数，按远离零方向进位。
 - 验证：用整数运算按"远离零方向进位"算出的日均价总和是 2,855,139.18，与 Snowflake 相同；共有 913 个（日 × 节点）分组恰好落在中间。
-- 结论：Snowflake 为权威版本（ChemQ 的评测答案从 Snowflake 算出）。DuckDB 仅用于本地开发，差异不影响。
+
+## avg_price 的修复（2026-11-06，应 ChemQ 要求）
+ChemQ 的标准答案只从 DuckDB 生成，要求两个引擎逐行一致，所以不再容忍这 0.01 的差异。
+- 新 macro `nz_avg_price_2dp`：价格先换成整数"分"求和，平均数用整数运算舍入（`sign(S) * floor((2|S| + n) / (2n))`），
+  规则与 Snowflake 的 ROUND 相同：四舍五入、远离零（0.005 → 0.01，-0.005 → -0.01）。
+- DuckDB 版用 `//`（DuckDB 的 `/` 是浮点除法），Snowflake 版用 `floor(a / b)`。
+- 先转 bigint 再乘 0.01，避免 hugeint 乘 decimal 超 38 位后悄悄变成 DOUBLE。
+- 只动 `avg_price`；`min_price`、`max_price`、计数和 `mart_current_price` 不变。
+- 单元测试：`daily_d2`（10.00、10.01 → 10.01）、`daily_d3`（-10.00、-10.01 → -10.01）、`daily_d4`（0 附近的正负两个 tie），两个引擎都要跑过。
+- 逐行比较：`scripts/compare_daily_price.py`（按 trading_date + node_id 对齐，只读）。
