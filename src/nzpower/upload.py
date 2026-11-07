@@ -29,13 +29,18 @@ class UploadSummary:
     skipped: list
 
 
-def upload_prices(source_dir, container_client, prefix="prices"):
+# upload_generation(source_dir, container_client, prefix="generation")：同上，处理 YYYYMM_Generation_MD.csv，
+#   本地 202604_Generation_MD.csv -> 容器内 generation/2026-04/202604_Generation_MD.csv（月份必须是 01–12）
+GENERATION_PATTERN = re.compile(r"^\d{4}(0[1-9]|1[0-2])_Generation_MD\.csv$")
+
+
+def _upload_partitioned(source_dir, container_client, prefix, pattern):
     uploaded = []
     skipped = []
     for path in sorted(Path(source_dir).iterdir()):
         if not path.is_file():
             continue
-        if not FILENAME_PATTERN.match(path.name):
+        if not pattern.match(path.name):
             skipped.append(path.name)
             continue
         year, month = path.name[0:4], path.name[4:6]
@@ -43,6 +48,14 @@ def upload_prices(source_dir, container_client, prefix="prices"):
         container_client.upload_blob(blob_name, path.read_bytes(), overwrite=True)
         uploaded.append(blob_name)
     return UploadSummary(uploaded=sorted(uploaded), skipped=sorted(skipped))
+
+
+def upload_prices(source_dir, container_client, prefix="prices"):
+    return _upload_partitioned(source_dir, container_client, prefix, FILENAME_PATTERN)
+
+
+def upload_generation(source_dir, container_client, prefix="generation"):
+    return _upload_partitioned(source_dir, container_client, prefix, GENERATION_PATTERN)
 
 
 # 命令行入口：uv run python -m nzpower.upload [--source 目录] [--container 名称]
@@ -63,7 +76,8 @@ def _create_container_client(connection_string, container_name):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="nzpower.upload")
-    parser.add_argument("--source", default="data/raw/prices")
+    parser.add_argument("--dataset", choices=["prices", "generation"], default="prices")
+    parser.add_argument("--source", default=None, help="default data/raw/<dataset>")
     parser.add_argument("--container", default="raw")
     args = parser.parse_args(argv)
 
@@ -75,13 +89,14 @@ def main(argv=None):
         )
         return 1
 
-    source = Path(args.source)
+    source = Path(args.source or f"data/raw/{args.dataset}")
     if not source.is_dir():
         print(f"source directory not found: {source}", file=sys.stderr)
         return 1
 
     container_client = _create_container_client(connection_string, args.container)
-    summary = upload_prices(source, container_client)
+    upload = upload_prices if args.dataset == "prices" else upload_generation
+    summary = upload(source, container_client)
     print(f"uploaded: {len(summary.uploaded)}, skipped: {len(summary.skipped)}")
     for name in summary.skipped:
         print(f"  skipped file: {name}")
