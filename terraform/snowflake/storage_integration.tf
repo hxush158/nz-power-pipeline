@@ -12,6 +12,7 @@ resource "snowflake_storage_integration_azure" "raw" {
 
   storage_allowed_locations = [
     "azure://nzpowerhxu.blob.core.windows.net/raw/prices/",
+    "azure://nzpowerhxu.blob.core.windows.net/raw/generation/",
   ]
 }
 
