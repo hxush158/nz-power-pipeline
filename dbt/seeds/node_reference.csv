@@ -1,0 +1,247 @@
+node_id,node_name,island,zone,region,mapping_source,nsp_snapshot_date
+ABY0111,ALBURY,SI,LSI,South Canterbury (Alpine Energy),nsp,2026-11-06
+ALB0331,ALBANY,NI,UNI,Waitemata (Vector),nsp,2026-11-06
+ALB1101,ALBANY,NI,UNI,Waitemata (Vector),nsp,2026-11-06
+APS0111,ARTHURS PASS,SI,USI,Central Canterbury (Orion New Zealand),nsp,2026-11-06
+ARA2201,ARATIATIA,NI,CNI,Taupō (Unison Networks),nsp,2026-11-06
+ARG1101,ARGYLE,SI,USI,Marlborough (Marlborough Lines),nsp,2026-11-06
+ARI1101,ARAPUNI,NI,CNI,Thames Valley (Powerco),nsp,2026-11-06
+ARI1102,Arapuni,NI,CNI,Thames Valley (Powerco),nsp,2026-11-06
+ASB0661,ASHBURTON,SI,USI,Ashburton (Electricity Ashburton),nsp,2026-11-06
+ASY0111,ASHLEY,SI,USI,North Canterbury (MainPower NZ),nsp,2026-11-06
+ATI2201,ATIAMURI,NI,CNI,King Country (The Lines Company),nsp,2026-11-06
+AVI2201,AVIEMORE,SI,LSI,Waitaki (Network Waitaki),nsp,2026-11-06
+BAL0331,BALCLUTHA,SI,LSI,Otago (OtagoNet),nsp,2026-11-06
+BDE0111,BRYDONE,SI,LSI,Southland (The Power Company),nsp,2026-11-06
+BEN2201,BENMORE,SI,LSI,,derived_from_site,2026-11-06
+BEN2202,BENMORE,SI,LSI,Waitaki (Network Waitaki),nsp,2026-11-06
+BLN0331,BLENHEIM,SI,USI,Marlborough (Marlborough Lines),nsp,2026-11-06
+BOB1101,BOMBAY,NI,UNI,Counties (Counties Power),nsp,2026-11-06
+BPD1101,Bells Pond,SI,LSI,South Canterbury (Alpine Energy),nsp,2026-11-06
+BPE0331,BUNNYTHORPE,NI,LNI,Manawatū (Powerco),nsp,2026-11-06
+BPE0551,BUNNYTHORPE,NI,LNI,Manawatū (Powerco),nsp,2026-11-06
+BPE2201,BUNNYTHORPE,NI,LNI,,derived_from_site,2026-11-06
+BPT1101,BLACKPOINT,SI,LSI,Waitaki (Network Waitaki),nsp,2026-11-06
+BRB0331,BREAM BAY,NI,UNI,Whangārei and Kaipara (Northpower),nsp,2026-11-06
+BRK0331,BRUNSWICK,NI,LNI,Whanganui (Powerco),nsp,2026-11-06
+BRY0661,BROMLEY,SI,USI,Central Canterbury (Orion New Zealand),nsp,2026-11-06
+BWK1101,BERWICK,SI,LSI,Dunedin (Aurora Energy),nsp,2026-11-06
+CBG0111,CAMBRIDGE,NI,CNI,Waipa (Waipa Networks),nsp,2026-11-06
+CLH0111,CASTLE HILL,SI,USI,Central Canterbury (Orion New Zealand),nsp,2026-11-06
+CML0331,CROMWELL,SI,LSI,Central Otago (Aurora Energy),nsp,2026-11-06
+COL0111,COLERIDGE,SI,USI,Central Canterbury (Orion New Zealand),nsp,2026-11-06
+COL0661,COLERIDGE,SI,USI,Central Canterbury (Orion New Zealand),nsp,2026-11-06
+CPK0111,Central Park,NI,LNI,Wellington (Wellington Electricity),nsp,2026-11-06
+CPK0331,Central Park,NI,LNI,Wellington (Wellington Electricity),nsp,2026-11-06
+CST0331,CARRINGTON ST,NI,LNI,Taranaki (Powerco),nsp,2026-11-06
+CUL0331,CULVERDEN,SI,USI,North Canterbury (MainPower NZ),nsp,2026-11-06
+CUL0661,Culverden,SI,USI,North Canterbury (MainPower NZ),nsp,2026-11-06
+CYD0331,CLYDE,SI,LSI,Central Otago (Aurora Energy),nsp,2026-11-06
+CYD2201,CLYDE,SI,LSI,Central Otago (Aurora Energy),nsp,2026-11-06
+DOB0331,DOBSON,SI,USI,West Coast (Westpower),nsp,2026-11-06
+DOB0661,DOBSON,SI,USI,,derived_from_site,2026-11-06
+DVK0111,Dannevirke Solar Farm,NI,LNI,Southern Hawke's Bay (Scanpower),nsp,2026-11-06
+EDG0331,EDGECUMBE,NI,CNI,Eastern Bay of Plenty (Horizon Energy),nsp,2026-11-06
+EDN0331,EDENDALE,SI,LSI,Southland (The Power Company),nsp,2026-11-06
+FHL0331,FERNHILL,NI,CNI,Hawke's Bay (Unison Networks),nsp,2026-11-06
+FKN0331,Frankton,SI,LSI,Frankton (Lakelands),nsp,2026-11-06
+GFD0331,Gracefield,NI,LNI,Wellington (Wellington Electricity),nsp,2026-11-06
+GLN0331,GLENBROOK,NI,UNI,Counties (Counties Power),nsp,2026-11-06
+GLN0332,GLENBROOK,NI,UNI,Counties (Counties Power),nsp,2026-11-06
+GOR0331,GORE,SI,LSI,Southland (The Power Company),nsp,2026-11-06
+GYM0661,GREYMOUTH,SI,USI,West Coast (Westpower),nsp,2026-11-06
+GYT0331,GREYTOWN,NI,LNI,Wairarapa (Powerco),nsp,2026-11-06
+HAM0111,HAMILTON,NI,CNI,Waikato (WEL Networks),nsp,2026-11-06
+HAM0331,HAMILTON,NI,CNI,Waikato (WEL Networks),nsp,2026-11-06
+HAM0551,HAMILTON,NI,CNI,Waikato (WEL Networks),nsp,2026-11-06
+HAM2201,HAMILTON,NI,CNI,,derived_from_site,2026-11-06
+HAY0111,Haywards,NI,LNI,Wellington (Wellington Electricity),nsp,2026-11-06
+HAY0331,Haywards,NI,LNI,Wellington (Wellington Electricity),nsp,2026-11-06
+HAY1101,Haywards,NI,LNI,,derived_from_site,2026-11-06
+HAY2201,Haywards,NI,LNI,,derived_from_site,2026-11-06
+HEN0331,HENDERSON,NI,UNI,Waitemata (Vector),nsp,2026-11-06
+HEN2201,HENDERSON,NI,UNI,,derived_from_site,2026-11-06
+HEP0331,HEPBURN ROAD,NI,UNI,Waitemata (Vector),nsp,2026-11-06
+HIN0331,HINUERA,NI,CNI,Thames Valley (Powerco),nsp,2026-11-06
+HKK0661,HOKITIKA,SI,USI,West Coast (Westpower),nsp,2026-11-06
+HLY0331,Huntly,NI,CNI,Waikato (WEL Networks),nsp,2026-11-06
+HLY2201,HUNTLY,NI,CNI,Waikato (WEL Networks),nsp,2026-11-06
+HOB1101,HOBSON STREET,NI,UNI,Auckland (Vector),nsp,2026-11-06
+HOR0331,HORORATA,SI,USI,Central Canterbury (Orion New Zealand),nsp,2026-11-06
+HOR0661,HORORATA,SI,USI,Central Canterbury (Orion New Zealand),nsp,2026-11-06
+HRP2201,Harapaki,NI,CNI,Hawke's Bay (Unison Networks),nsp,2026-11-06
+HTI0331,HANGATIKI,NI,CNI,King Country (The Lines Company),nsp,2026-11-06
+HTI1101,Hangatiki,NI,CNI,King Country (The Lines Company),nsp,2026-11-06
+HTU0331,Forrest Road Cambridge,NI,CNI,Waipa (Waipa Networks),nsp,2026-11-06
+HUI0331,HUIRANGI,NI,LNI,Taranaki (Powerco),nsp,2026-11-06
+HWA0331,HAWERA,NI,LNI,Taranaki (Powerco),nsp,2026-11-06
+HWA0332,KUPE GAS FIELD,NI,LNI,Taranaki (Powerco),nsp,2026-11-06
+HWA1101,HAWERA,NI,LNI,Taranaki (Powerco),nsp,2026-11-06
+HWA1102,HAWERA,NI,LNI,Taranaki (Powerco),nsp,2026-11-06
+HWB0331,HALFWAY BUSH,SI,LSI,Otago (OtagoNet),nsp,2026-11-06
+HWB1101,HALF WAY BUSH,SI,LSI,Otago (OtagoNet),nsp,2026-11-06
+HWB2201,HALFWAY BUSH,SI,LSI,,derived_from_site,2026-11-06
+INV0331,INVERCARGILL,SI,LSI,Invercargill (Electricity Invercargill),nsp,2026-11-06
+INV0661,INVERCARGILL,SI,LSI,Southland (The Power Company),nsp,2026-11-06
+INV2201,INVERCARGILL,SI,LSI,,derived_from_site,2026-11-06
+INV2202,INVERCARGILL,SI,LSI,,derived_from_site,2026-11-06
+ISL0331,ISLINGTON,SI,USI,Central Canterbury (Orion New Zealand),nsp,2026-11-06
+ISL0661,ISLINGTON,SI,USI,Central Canterbury (Orion New Zealand),nsp,2026-11-06
+ISL2201,ISLINGTON,SI,USI,,derived_from_site,2026-11-06
+JRD1101,Junction Road,NI,LNI,Taranaki (Powerco),nsp,2026-11-06
+KAI0111,KAIAPOI,SI,USI,North Canterbury (MainPower NZ),nsp,2026-11-06
+KAW0111,KAWERAU,NI,CNI,Eastern Bay of Plenty (Horizon Energy),nsp,2026-11-06
+KAW0112,Kawerau,NI,CNI,Eastern Bay of Plenty (Horizon Energy),nsp,2026-11-06
+KAW1101,KAWERAU GEOTHERMAL,NI,CNI,Eastern Bay of Plenty (Horizon Energy),nsp,2026-11-06
+KAW2201,TOPP2,NI,,,nsp,2026-11-06
+KBY0661,KIMBERLEY,SI,USI,Central Canterbury (Orion New Zealand),nsp,2026-11-06
+KBY0662,KIMBERLEY,SI,USI,Central Canterbury (Orion New Zealand),nsp,2026-11-06
+KIK0111,KIKIWA,SI,USI,Tasman (Network Tasman),nsp,2026-11-06
+KIK2201,KIKIWA,SI,USI,,derived_from_site,2026-11-06
+KIN0111,KINLEITH,NI,CNI,Thames Valley (Powerco),nsp,2026-11-06
+KIN0112,KINLEITH,NI,CNI,Thames Valley (Powerco),nsp,2026-11-06
+KIN0113,KINLEITH,NI,CNI,Thames Valley (Powerco),nsp,2026-11-06
+KIN0331,KINLEITH,NI,CNI,Thames Valley (Powerco),nsp,2026-11-06
+KIW2201,Kaiwera Downs,SI,LSI,Southland (The Power Company),nsp,2026-11-06
+KMO0331,Kaitemako,NI,CNI,Tauranga (Powerco),nsp,2026-11-06
+KOE1101,Kaikohe,NI,UNI,Bay of Islands (Top Energy),nsp,2026-11-06
+KPA1101,KAPONGA,NI,LNI,Taranaki (Powerco),nsp,2026-11-06
+KPO1101,KARAPIRO,NI,CNI,Thames Valley (Powerco),nsp,2026-11-06
+KPU0661,KOPU,NI,CNI,Thames Valley (Powerco),nsp,2026-11-06
+KUM0661,KUMARA,SI,USI,West Coast (Westpower),nsp,2026-11-06
+KWA0111,Kaiwharawhara,NI,LNI,Wellington (Wellington Electricity),nsp,2026-11-06
+LFD1101,LICHFIELD,NI,CNI,Thames Valley (Powerco),nsp,2026-11-06
+LFD1102,LICHFIELD,NI,CNI,Thames Valley (Powerco),nsp,2026-11-06
+LTN0331,LINTON,NI,LNI,Manawatū (Powerco),nsp,2026-11-06
+LTN2201,TURITEA,NI,LNI,Manawatū (Powerco),nsp,2026-11-06
+MAN2201,MANAPOURI,SI,LSI,Southland (The Power Company),nsp,2026-11-06
+MAT1101,MATAHINA,NI,CNI,Eastern Bay of Plenty (Horizon Energy),nsp,2026-11-06
+MCH0111,MURCHISON,SI,USI,Tasman (Network Tasman),nsp,2026-11-06
+MDN1101,MARSDEN,NI,UNI,Whangārei and Kaipara (Northpower),nsp,2026-11-06
+MDN2201,MARSDEN,NI,UNI,,derived_from_site,2026-11-06
+MGM0331,MANGAMAIRE,NI,LNI,Manawatū (Powerco),nsp,2026-11-06
+MHO0331,MANGAHAO,NI,LNI,Kāpiti and Horowhenua (Electra),nsp,2026-11-06
+MKE1101,McKee,NI,LNI,Taranaki (Powerco),nsp,2026-11-06
+MLG0111,Melling,NI,LNI,Wellington (Wellington Electricity),nsp,2026-11-06
+MLG0331,Melling,NI,LNI,Wellington (Wellington Electricity),nsp,2026-11-06
+MNG0331,MANGERE,NI,UNI,Auckland (Vector),nsp,2026-11-06
+MNG1101,MANGERE,NI,UNI,Auckland (Vector),nsp,2026-11-06
+MNI0111,OMV NZ Production Ltd,NI,LNI,Taranaki (Powerco),nsp,2026-11-06
+MPE1101,MAUNGATAPERE,NI,UNI,Whangārei and Kaipara (Northpower),nsp,2026-11-06
+MST0331,MASTERTON,NI,LNI,Wairarapa (Powerco),nsp,2026-11-06
+MTI2201,MARAETAI,NI,CNI,King Country (The Lines Company),nsp,2026-11-06
+MTM0331,MT. MAUNGANUI,NI,CNI,Tauranga (Powerco),nsp,2026-11-06
+MTN0331,MARTON,NI,LNI,Whanganui (Powerco),nsp,2026-11-06
+MTO0331,MAUNGATUROTO,NI,UNI,Whangārei and Kaipara (Northpower),nsp,2026-11-06
+MTR0331,MATAROA,NI,LNI,Whanganui (Powerco),nsp,2026-11-06
+NAP2201,Nga Awa Purua,NI,CNI,Taupō (Unison Networks),nsp,2026-11-06
+NAP2202,NGATAMARIKI,NI,CNI,Taupō (Unison Networks),nsp,2026-11-06
+NMA0331,NTH MAKAREWA,SI,LSI,Southland (The Power Company),nsp,2026-11-06
+NPK0331,NATIONAL PARK,NI,CNI,King Country (The Lines Company),nsp,2026-11-06
+NSY0331,NASEBY,SI,LSI,Otago (OtagoNet),nsp,2026-11-06
+NWD0661,Norwood,SI,USI,Central Canterbury (Orion New Zealand),nsp,2026-11-06
+OAM0331,OAMARU,SI,LSI,Waitaki (Network Waitaki),nsp,2026-11-06
+OHA2201,OHAU A,SI,LSI,South Canterbury (Alpine Energy),nsp,2026-11-06
+OHB2201,OHAU B,SI,LSI,Waitaki (Network Waitaki),nsp,2026-11-06
+OHC2201,OHAU C,SI,LSI,Waitaki (Network Waitaki),nsp,2026-11-06
+OHG1101,OHANGAI,NI,LNI,Taranaki (Powerco),nsp,2026-11-06
+OHK2201,OHAKURI,NI,CNI,Rotorua (Unison Networks),nsp,2026-11-06
+OKI2201,OHAAKI,NI,CNI,Rotorua (Unison Networks),nsp,2026-11-06
+OKN0111,OHAKUNE,NI,CNI,Whanganui (Powerco),nsp,2026-11-06
+ONG0331,ONGARUE,NI,CNI,King Country (The Lines Company),nsp,2026-11-06
+OPK0331,OPUNAKE,NI,LNI,Taranaki (Powerco),nsp,2026-11-06
+ORO1101,OROWAITI,SI,USI,Buller (Buller Electricity),nsp,2026-11-06
+ORO1102,OROWAITI,SI,USI,Buller (Buller Electricity),nsp,2026-11-06
+OTA0221,OTAHUHU,NI,UNI,Auckland (Vector),nsp,2026-11-06
+OTA2201,OTAHUHU,NI,UNI,,derived_from_site,2026-11-06
+OTI0111,OTIRA,SI,USI,West Coast (Westpower),nsp,2026-11-06
+OWH0111,OWHATA,NI,CNI,Rotorua (Unison Networks),nsp,2026-11-06
+PAK0331,PAKURANGA,NI,UNI,Auckland (Vector),nsp,2026-11-06
+PAO1101,PIAKO 110KV,NI,CNI,Thames Valley (Powerco),nsp,2026-11-06
+PEN0221,PENROSE,NI,UNI,Auckland (Vector),nsp,2026-11-06
+PEN0251,Penrose,NI,UNI,Auckland (Vector),nsp,2026-11-06
+PEN0331,PENROSE,NI,UNI,Auckland (Vector),nsp,2026-11-06
+PEN1101,PENROSE,NI,UNI,Auckland (Vector),nsp,2026-11-06
+PNI0331,Pauatahanui,NI,LNI,Wellington (Wellington Electricity),nsp,2026-11-06
+PPI2201,POIHIPI,NI,CNI,Taupō (Unison Networks),nsp,2026-11-06
+PRM0331,PARAPARAUMU,NI,LNI,Kāpiti and Horowhenua (Electra),nsp,2026-11-06
+RDF0331,REDCLYFFE,NI,CNI,Hawke's Bay (Unison Networks),nsp,2026-11-06
+RDF2201,REDCLYFFE,NI,CNI,,derived_from_site,2026-11-06
+RFN1101,REEFTON,SI,USI,West Coast (Westpower),nsp,2026-11-06
+RFN1102,REEFTON,SI,USI,West Coast (Westpower),nsp,2026-11-06
+ROS0221,MT. ROSKILL,NI,UNI,Auckland (Vector),nsp,2026-11-06
+ROS1101,MT. ROSKILL,NI,UNI,Auckland (Vector),nsp,2026-11-06
+ROT0111,ROTORUA,NI,CNI,Rotorua (Unison Networks),nsp,2026-11-06
+ROT0331,ROTORUA,NI,CNI,Rotorua (Unison Networks),nsp,2026-11-06
+ROT1101,ROTORUA,NI,CNI,Rotorua (Unison Networks),nsp,2026-11-06
+ROX1101,ROXBURGH,SI,LSI,Central Otago (Aurora Energy),nsp,2026-11-06
+ROX2201,ROXBURGH,SI,LSI,Central Otago (Aurora Energy),nsp,2026-11-06
+RPO2201,RANGIPO,NI,CNI,King Country (The Lines Company),nsp,2026-11-06
+SBK0661,SOUTHBROOK,SI,USI,North Canterbury (MainPower NZ),nsp,2026-11-06
+SDN0331,SOUTH DUNEDIN,SI,LSI,Dunedin (Aurora Energy),nsp,2026-11-06
+SFD0331,STRATFORD,NI,LNI,Taranaki (Powerco),nsp,2026-11-06
+SFD2201,STRATFORD,NI,LNI,Taranaki (Powerco),nsp,2026-11-06
+STK0331,STOKE,SI,USI,Tasman (Network Tasman),nsp,2026-11-06
+STK0661,STOKE,SI,USI,Tasman (Network Tasman),nsp,2026-11-06
+STK2201,STOKE,SI,USI,,derived_from_site,2026-11-06
+STU0111,STUDHOLME,SI,LSI,South Canterbury (Alpine Energy),nsp,2026-11-06
+SVL0331,SILVERDALE,NI,UNI,Waitemata (Vector),nsp,2026-11-06
+SWN0251,NZ Rail Southdown,NI,UNI,Auckland (Vector),nsp,2026-11-06
+SWN2201,SOUTHDOWN,NI,UNI,Auckland (Vector),nsp,2026-11-06
+TAB0331,Tauhara,NI,CNI,Taupō (Unison Networks),nsp,2026-11-06
+TAB2201,TAUHARA,NI,CNI,Taupō (Unison Networks),nsp,2026-11-06
+TAK0331,TAKANINI,NI,UNI,Auckland (Vector),nsp,2026-11-06
+TGA0111,TAURANGA,NI,CNI,Tauranga (Powerco),nsp,2026-11-06
+TGA0331,TAURANGA,NI,CNI,Tauranga (Powerco),nsp,2026-11-06
+THI2201,TE MIHI,NI,CNI,Taupō (Unison Networks),nsp,2026-11-06
+TIM0111,TIMARU,SI,LSI,South Canterbury (Alpine Energy),nsp,2026-11-06
+TKA0111,Tekapo A,SI,LSI,South Canterbury (Alpine Energy),nsp,2026-11-06
+TKA0331,TEKAPO A,SI,LSI,South Canterbury (Alpine Energy),nsp,2026-11-06
+TKB2201,Tekapo B,SI,LSI,South Canterbury (Alpine Energy),nsp,2026-11-06
+TKR0331,Takapu Road,NI,LNI,Wellington (Wellington Electricity),nsp,2026-11-06
+TKU0331,TOKAANU,NI,CNI,King Country (The Lines Company),nsp,2026-11-06
+TKU2201,TOKAANU,NI,CNI,King Country (The Lines Company),nsp,2026-11-06
+TMI0331,TE MATAI,NI,CNI,Tauranga (Powerco),nsp,2026-11-06
+TMK0331,TEMUKA,SI,LSI,South Canterbury (Alpine Energy),nsp,2026-11-06
+TMN0551,TAUMARUNUI,NI,CNI,King Country (The Lines Company),nsp,2026-11-06
+TMU0111,TE AWAMUTU,NI,CNI,Waipa (Waipa Networks),nsp,2026-11-06
+TMU1101,TE AWAMUTU,NI,CNI,Waipa (Waipa Networks),nsp,2026-11-06
+TNG0551,TANGIWAI,NI,CNI,King Country (The Lines Company),nsp,2026-11-06
+TRK0111,TARUKENGA,NI,CNI,Rotorua (Unison Networks),nsp,2026-11-06
+TRK2201,TARUKENGA,NI,CNI,,derived_from_site,2026-11-06
+TUI1101,TUIA FOR EAST,NI,CNI,Tairāwhiti and Wairoa (Firstlight Network),nsp,2026-11-06
+TWC2201,NZ Windfarms,NI,LNI,Manawatū (Powerco),nsp,2026-11-06
+TWH0331,TE KOWHAI,NI,CNI,Waikato (WEL Networks),nsp,2026-11-06
+TWI2201,TIWAI POINT,SI,LSI,Southland (The Power Company),nsp,2026-11-06
+TWZ0331,TWIZEL,SI,LSI,South Canterbury (Alpine Energy),nsp,2026-11-06
+UHT0331,Upper Hutt,NI,LNI,Wellington (Wellington Electricity),nsp,2026-11-06
+WAI0111,WAIOTAHI,NI,CNI,Eastern Bay of Plenty (Horizon Energy),nsp,2026-11-06
+WAI0331,WAIOTAHI,NI,CNI,Eastern Bay of Plenty (Horizon Energy),nsp,2026-11-06
+WAI0501,WAIOTAHI,NI,CNI,Eastern Bay of Plenty (Horizon Energy),nsp,2026-11-06
+WDV0111,WOODVILLE,NI,LNI,Southern Hawke's Bay (Scanpower),nsp,2026-11-06
+WDV1101,WOODVILLE,NI,LNI,Southern Hawke's Bay (Scanpower),nsp,2026-11-06
+WEL0331,WELLSFORD,NI,UNI,Waitemata (Vector),nsp,2026-11-06
+WGN0331,WANGANUI,NI,LNI,Whanganui (Powerco),nsp,2026-11-06
+WHI0111,WHIRINAKI,NI,CNI,Hawke's Bay (Unison Networks),nsp,2026-11-06
+WHI2201,WHIRINAKI,NI,CNI,Hawke's Bay (Unison Networks),nsp,2026-11-06
+WHU0331,WAIHOU,NI,CNI,Thames Valley (Powerco),nsp,2026-11-06
+WHU1101,Tauhei Solar Farm,NI,CNI,Thames Valley (Powerco),nsp,2026-11-06
+WIL0331,Wilton,NI,LNI,Wellington (Wellington Electricity),nsp,2026-11-06
+WIR0331,WIRI,NI,UNI,Auckland (Vector),nsp,2026-11-06
+WKM2201,WHAKAMARU,NI,CNI,King Country (The Lines Company),nsp,2026-11-06
+WKO0331,WAIKINO,NI,CNI,Thames Valley (Powerco),nsp,2026-11-06
+WPA2201,WAIPAPA,NI,CNI,Waipa (Waipa Networks),nsp,2026-11-06
+WPR0331,WAIPARA,SI,USI,North Canterbury (MainPower NZ),nsp,2026-11-06
+WPR0661,WAIPARA,SI,USI,North Canterbury (MainPower NZ),nsp,2026-11-06
+WPW0331,WAIPAWA,NI,LNI,Central Hawke's Bay (Centralines),nsp,2026-11-06
+WRD0331,WAIRAU ROAD,NI,UNI,Waitemata (Vector),nsp,2026-11-06
+WRK0331,WAIRAKEI,NI,CNI,Taupō (Unison Networks),nsp,2026-11-06
+WRK2201,WAIRAKEI,NI,CNI,Taupō (Unison Networks),nsp,2026-11-06
+WTK0111,WAITAKI,SI,LSI,Waitaki (Network Waitaki),nsp,2026-11-06
+WTK0331,WAITAKI,SI,LSI,Waitaki (Network Waitaki),nsp,2026-11-06
+WTK2201,WAITAKI,SI,LSI,,derived_from_site,2026-11-06
+WTU0331,WHAKATU,NI,CNI,Hawke's Bay (Unison Networks),nsp,2026-11-06
+WVY0111,WAVERLEY,NI,LNI,Whanganui (Powerco),nsp,2026-11-06
+WVY1101,WAVERLEY,NI,LNI,Whanganui (Powerco),nsp,2026-11-06
+WWD1102,Westwind,NI,LNI,Wellington (Wellington Electricity),nsp,2026-11-06
+WWD1103,Westwind,NI,LNI,Wellington (Wellington Electricity),nsp,2026-11-06

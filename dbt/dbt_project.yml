@@ -21,3 +21,16 @@ models:
     marts:
       +materialized: table
       +schema: CORE
+
+seeds:
+  nz_power:
+    +schema: STAGING
+    node_reference:
+      +column_types:
+        node_id: varchar
+        node_name: varchar
+        island: varchar
+        zone: varchar
+        region: varchar
+        mapping_source: varchar
+        nsp_snapshot_date: varchar

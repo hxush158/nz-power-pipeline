@@ -14,6 +14,9 @@ unit_tests:
         rows:
           - {node_id: aby0111}
           - {node_id: ABY0111}
+      - input: ref('node_reference')
+        rows:
+          - {node_id: ZZZ9999}
     expect:
       rows:
         - {node_id: ABY0111}
@@ -28,6 +31,9 @@ unit_tests:
           - {node_id: ''}
           - {node_id: '   '}
           - {node_id: ABY0111}
+      - input: ref('node_reference')
+        rows:
+          - {node_id: ZZZ9999}
     expect:
       rows:
         - {node_id: ABY0111}
@@ -40,10 +46,29 @@ unit_tests:
         rows:
           - {node_id: ABY0111}
           - {node_id: ' ABY0111'}
+      - input: ref('node_reference')
+        rows:
+          - {node_id: ZZZ9999}
     expect:
       rows:
         - {node_id: ABY0111}
         - {node_id: ' ABY0111'}
+
+  - name: dim_node_n4_joins_reference_case_insensitively
+    description: seed 里的 node_id 按大写匹配；匹配到的节点带上名称、岛、分区、区域；没匹配到的为 NULL。
+    model: dim_node
+    given:
+      - input: ref('stg_prices')
+        rows:
+          - {node_id: aby0111}
+          - {node_id: QQQ9999}
+      - input: ref('node_reference')
+        rows:
+          - {node_id: ABY0111, node_name: ALBURY, island: SI, zone: LSI, region: South Canterbury (Alpine Energy), mapping_source: nsp}
+    expect:
+      rows:
+        - {node_id: ABY0111, node_name: ALBURY, island: SI, zone: LSI, region: South Canterbury (Alpine Energy), mapping_source: nsp}
+        - {node_id: QQQ9999, node_name: null, island: null, zone: null, region: null, mapping_source: null}
 
   # ---------- fact_electricity_price ----------
   - name: fact_f1_keeps_final_and_interim

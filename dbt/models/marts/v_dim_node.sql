@@ -33,6 +33,7 @@ select
     n.node_id,
     n.node_name,
     n.island,
+    n.zone,
     n.region,
     case when f.first_date > g.min_date then f.first_date end as first_seen_date
 from {{ ref('dim_node') }} as n

@@ -75,11 +75,31 @@ models:
         description: "大写的节点代码，如 ABY0111。"
         data_tests: [unique, not_null]
       - name: node_name
-        description: "节点名称。目前为 NULL，之后由 EMI 节点参考数据补充。"
+        description: "节点名称，取自 EMI Network Supply Points 的 Description，原样不改大小写。推导节点取同站点最新一行的名称。"
       - name: island
-        description: "所在岛屿。目前为 NULL，之后由参考数据补充。"
+        description: "所在岛屿：NI（北岛）或 SI（南岛）。"
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [NI, SI]
+      - name: zone
+        description: >
+          定价分区：UNI / LNI / CNI（北岛上、下、中部）、USI / LSI（南岛上、下部）。
+          已知缺口：KAW2201 在源数据里没有分区，为 NULL。
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [UNI, LNI, CNI, USI, LSI]
       - name: region
-        description: "所在区域。目前为 NULL，之后由参考数据补充。"
+        description: >
+          配电网报告区域（Network reporting region），如 "Waikato (WEL Networks)"。
+          输电网节点（站点推导的 18 个）不属于任何配电网，为 NULL。
+      - name: mapping_source
+        description: "映射来源：nsp（按节点代码直接匹配）、derived_from_site（按站点前三位推出岛和分区）、unmatched（未找到，应为 0 行）。仅在 CORE，不暴露到 MART。"
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [nsp, derived_from_site]
 
   - name: fact_electricity_price
     description: >
@@ -134,11 +154,13 @@ models:
       - name: node_id
         description: "大写的节点代码。"
       - name: node_name
-        description: "节点名称，目前为 NULL。"
+        description: "节点名称（EMI NSP 的 Description）。"
       - name: island
-        description: "所在岛屿，目前为 NULL。"
+        description: "所在岛屿：NI 或 SI。"
+      - name: zone
+        description: "定价分区：UNI / LNI / CNI / USI / LSI；KAW2201 为 NULL（源数据缺失）。"
       - name: region
-        description: "所在区域，目前为 NULL。"
+        description: "配电网报告区域；输电网节点为 NULL。"
       - name: first_seen_date
         description: >
           该节点在事实表中出现的最早交易日（不区分版本）。如果等于事实表里的全局最早交易日，
