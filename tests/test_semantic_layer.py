@@ -177,3 +177,42 @@ def test_h_metric_names_are_unique_across_the_new_views(semantic, marts):
     # en 不能重复（用例 c），两个视图都有 generation_kwh 列，所以第二个指标要用不同的 en
     assert check_metric_fields(semantic, marts) == []
     assert check_columns_exist(semantic, marts) == []
+
+
+# ---- 用例 i–m：跨节点平均的口径（2026-11-10）----
+NODE_REFERENCE_PATH = ROOT / "dbt" / "seeds" / "node_reference.csv"
+
+
+def test_i_avg_price_no_longer_says_cross_node_average_is_meaningless(semantic):
+    m = _metric(semantic, "avg_price")
+    text = " ".join(m["pitfalls"]).lower()
+    assert "no clear business meaning" not in text      # 与 not_available 里"可以按岛分组"自相矛盾
+    assert "unweighted" in text
+    assert "cross_node_average" in text
+
+
+def test_j_cross_node_average_convention_requires_the_caveats(semantic):
+    text = semantic["conventions"]["cross_node_average"].lower()
+    assert "unweighted" in text                           # 必须说明不加权
+    assert "number of nodes" in text                      # 必须给出参与的节点数
+    assert "market price" in text and "never" in text     # 不能说成市场价
+
+
+def test_k_reference_nodes_convention_and_nodes_exist_with_expected_islands(semantic):
+    import csv
+
+    text = semantic["conventions"]["reference_nodes"]
+    assert "OTA2201" in text and "BEN2201" in text
+    assert "no single national price" in text.lower()
+    with NODE_REFERENCE_PATH.open(encoding="utf-8") as f:
+        islands = {r["node_id"]: r["island"] for r in csv.DictReader(f)}
+    assert islands["OTA2201"] == "NI"
+    assert islands["BEN2201"] == "SI"
+
+
+def test_l_not_available_points_to_cross_node_average(semantic):
+    assert "cross_node_average" in semantic["conventions"]["not_available"]
+
+
+def test_m_version_is_bumped_for_the_new_conventions(semantic):
+    assert semantic["version"] == "2026-11.1"
