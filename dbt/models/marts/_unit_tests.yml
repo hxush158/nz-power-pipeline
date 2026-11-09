@@ -483,3 +483,210 @@ unit_tests:
       rows:
         - {period_key: 2026040101, plant_key: 7, generation_kwh: 3376}
         - {period_key: 2026040101, plant_key: 8, generation_kwh: 0}
+
+  # ---------- mart_daily_generation ----------
+  - name: daily_gen_m1_sums_kwh_and_counts_distinct_plants
+    description: >
+      同一天、同岛、同分区、同燃料的发电量相加；电厂数按 plant_code 去重（同一电厂在两个网络各一行，只算 1 个）；
+      不同燃料分开。
+    model: mart_daily_generation
+    given:
+      - input: ref('fact_generation')
+        rows:
+          - {period_key: 2026040101, plant_key: 1, generation_kwh: 100}
+          - {period_key: 2026040102, plant_key: 1, generation_kwh: 200}
+          - {period_key: 2026040101, plant_key: 2, generation_kwh: 0}
+          - {period_key: 2026040101, plant_key: 3, generation_kwh: 50}
+      - input: ref('dim_plant')
+        rows:
+          - {plant_key: 1, plant_code: arapuni, island: NI, zone: CNI, fuel: Hydro}
+          - {plant_key: 2, plant_code: arapuni, island: NI, zone: CNI, fuel: Hydro}
+          - {plant_key: 3, plant_code: te_apiti, island: NI, zone: LNI, fuel: Wind}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026040101, date_key: 20260401}
+          - {period_key: 2026040102, date_key: 20260401}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20260401, trading_date: '2026-04-01'}
+    expect:
+      rows:
+        - {trading_date: '2026-04-01', island: NI, zone: CNI, fuel: Hydro, generation_kwh: 300, plant_count: 1}
+        - {trading_date: '2026-04-01', island: NI, zone: LNI, fuel: Wind, generation_kwh: 50, plant_count: 1}
+
+  - name: daily_gen_m2_keeps_plants_at_non_price_nodes_with_null_island
+    description: 不在价格节点里的电厂（岛和分区为 NULL）仍然计入发电量，不丢；island 和 zone 为 NULL。
+    model: mart_daily_generation
+    given:
+      - input: ref('fact_generation')
+        rows:
+          - {period_key: 2026040101, plant_key: 9, generation_kwh: 40}
+      - input: ref('dim_plant')
+        rows:
+          - {plant_key: 9, plant_code: wpg_plant, island: null, zone: null, fuel: Gas}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026040101, date_key: 20260401}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20260401, trading_date: '2026-04-01'}
+    expect:
+      rows:
+        - {trading_date: '2026-04-01', island: null, zone: null, fuel: Gas, generation_kwh: 40, plant_count: 1}
+
+  # ---------- mart_daily_generation_weighted_price ----------
+  - name: gen_price_w1_weights_price_by_kwh
+    description: 100 kWh 卖 10.00、300 kWh 卖 20.00，加权均价 (1000 + 6000) / 400 = 17.50（简单平均是 15.00）。
+    model: mart_daily_generation_weighted_price
+    given:
+      - input: ref('fact_generation')
+        rows:
+          - {period_key: 2026040101, plant_key: 1, generation_kwh: 100}
+          - {period_key: 2026040102, plant_key: 1, generation_kwh: 300}
+      - input: ref('dim_plant')
+        rows:
+          - {plant_key: 1, node_id: ARI1102, island: NI, fuel: Hydro}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026040101, date_key: 20260401}
+          - {period_key: 2026040102, date_key: 20260401}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20260401, trading_date: '2026-04-01'}
+      - input: ref('mart_current_price')
+        rows:
+          - {period_key: 2026040101, node_id: ARI1102, price_nzd_per_mwh: 10.00, price_version: final}
+          - {period_key: 2026040102, node_id: ARI1102, price_nzd_per_mwh: 20.00, price_version: final}
+    expect:
+      rows:
+        - {trading_date: '2026-04-01', island: NI, fuel: Hydro, generation_kwh: 400, interim_generation_kwh: 0, weighted_avg_price: 17.50}
+
+  - name: gen_price_w2_two_plants_at_one_node_both_use_the_node_price
+    description: 同一节点同一时段的两个电厂（或两个网络）都用该节点的价格，发电量相加，价格不重复计入。
+    model: mart_daily_generation_weighted_price
+    given:
+      - input: ref('fact_generation')
+        rows:
+          - {period_key: 2026040101, plant_key: 1, generation_kwh: 100}
+          - {period_key: 2026040101, plant_key: 2, generation_kwh: 100}
+      - input: ref('dim_plant')
+        rows:
+          - {plant_key: 1, node_id: ARI1102, island: NI, fuel: Hydro}
+          - {plant_key: 2, node_id: ARI1102, island: NI, fuel: Hydro}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026040101, date_key: 20260401}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20260401, trading_date: '2026-04-01'}
+      - input: ref('mart_current_price')
+        rows:
+          - {period_key: 2026040101, node_id: ARI1102, price_nzd_per_mwh: 30.00, price_version: final}
+    expect:
+      rows:
+        - {trading_date: '2026-04-01', island: NI, fuel: Hydro, generation_kwh: 200, weighted_avg_price: 30.00}
+
+  - name: gen_price_w3_all_zero_generation_has_null_price
+    description: 某燃料当天发电量全是 0，权重为 0，加权均价为 NULL（不报除零错），发电量为 0。
+    model: mart_daily_generation_weighted_price
+    given:
+      - input: ref('fact_generation')
+        rows:
+          - {period_key: 2026040101, plant_key: 1, generation_kwh: 0}
+      - input: ref('dim_plant')
+        rows:
+          - {plant_key: 1, node_id: ARI1102, island: NI, fuel: Solar}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026040101, date_key: 20260401}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20260401, trading_date: '2026-04-01'}
+      - input: ref('mart_current_price')
+        rows:
+          - {period_key: 2026040101, node_id: ARI1102, price_nzd_per_mwh: 30.00, price_version: final}
+    expect:
+      rows:
+        - {trading_date: '2026-04-01', island: NI, fuel: Solar, generation_kwh: 0, weighted_avg_price: null}
+
+  - name: gen_price_w4_negative_price_tie_rounds_away_from_zero
+    description: 100 kWh 卖 -10.00、100 kWh 卖 -10.01，加权均价 -10.005，远离零进位得 -10.01（与 mart_daily_price 同一规则）。
+    model: mart_daily_generation_weighted_price
+    given:
+      - input: ref('fact_generation')
+        rows:
+          - {period_key: 2026040101, plant_key: 1, generation_kwh: 100}
+          - {period_key: 2026040102, plant_key: 1, generation_kwh: 100}
+      - input: ref('dim_plant')
+        rows:
+          - {plant_key: 1, node_id: ARI1102, island: NI, fuel: Wind}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026040101, date_key: 20260401}
+          - {period_key: 2026040102, date_key: 20260401}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20260401, trading_date: '2026-04-01'}
+      - input: ref('mart_current_price')
+        rows:
+          - {period_key: 2026040101, node_id: ARI1102, price_nzd_per_mwh: -10.00, price_version: final}
+          - {period_key: 2026040102, node_id: ARI1102, price_nzd_per_mwh: -10.01, price_version: final}
+    expect:
+      rows:
+        - {trading_date: '2026-04-01', island: NI, fuel: Wind, generation_kwh: 200, weighted_avg_price: -10.01}
+
+  - name: gen_price_w5_positive_tie_rounds_away_from_zero
+    description: 100 kWh 卖 10.00、100 kWh 卖 10.01，加权均价 10.005，进位得 10.01。
+    model: mart_daily_generation_weighted_price
+    given:
+      - input: ref('fact_generation')
+        rows:
+          - {period_key: 2026040101, plant_key: 1, generation_kwh: 100}
+          - {period_key: 2026040102, plant_key: 1, generation_kwh: 100}
+      - input: ref('dim_plant')
+        rows:
+          - {plant_key: 1, node_id: ARI1102, island: NI, fuel: Hydro}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026040101, date_key: 20260401}
+          - {period_key: 2026040102, date_key: 20260401}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20260401, trading_date: '2026-04-01'}
+      - input: ref('mart_current_price')
+        rows:
+          - {period_key: 2026040101, node_id: ARI1102, price_nzd_per_mwh: 10.00, price_version: final}
+          - {period_key: 2026040102, node_id: ARI1102, price_nzd_per_mwh: 10.01, price_version: final}
+    expect:
+      rows:
+        - {trading_date: '2026-04-01', island: NI, fuel: Hydro, generation_kwh: 200, weighted_avg_price: 10.01}
+
+  - name: gen_price_w6_interim_kwh_and_unpriced_nodes_excluded
+    description: >
+      用临时价的发电量单独记在 interim_generation_kwh；没有价格的节点（不在 mart_current_price 里）
+      的发电不进入加权价，也不计入 generation_kwh。
+    model: mart_daily_generation_weighted_price
+    given:
+      - input: ref('fact_generation')
+        rows:
+          - {period_key: 2026040101, plant_key: 1, generation_kwh: 100}
+          - {period_key: 2026040102, plant_key: 1, generation_kwh: 100}
+          - {period_key: 2026040101, plant_key: 2, generation_kwh: 999}
+      - input: ref('dim_plant')
+        rows:
+          - {plant_key: 1, node_id: ARI1102, island: NI, fuel: Hydro}
+          - {plant_key: 2, node_id: WPG0331, island: null, fuel: Hydro}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026040101, date_key: 20260401}
+          - {period_key: 2026040102, date_key: 20260401}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20260401, trading_date: '2026-04-01'}
+      - input: ref('mart_current_price')
+        rows:
+          - {period_key: 2026040101, node_id: ARI1102, price_nzd_per_mwh: 10.00, price_version: final}
+          - {period_key: 2026040102, node_id: ARI1102, price_nzd_per_mwh: 20.00, price_version: interim}
+    expect:
+      rows:
+        - {trading_date: '2026-04-01', island: NI, fuel: Hydro, generation_kwh: 200, interim_generation_kwh: 100, weighted_avg_price: 15.00}

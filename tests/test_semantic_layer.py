@@ -136,3 +136,44 @@ def test_c_duplicate_en_is_reported(semantic, marts):
     bad["metrics"][1]["en"] = bad["metrics"][0]["en"]
     problems = check_metric_fields(bad, marts)
     assert any("en 重复" in p for p in problems)
+
+
+# ---- 用例 d–g：发电数据进入语义层（2026-11-09）----
+FUELS = ["Hydro", "Wind", "Geothermal", "Solar", "Gas", "Coal", "Diesel", "Wood", "Battery storage"]
+
+
+def test_d_generation_views_and_metrics_are_declared(semantic):
+    views = {v["view"]: v for v in semantic["views"]}
+    assert views["mart_daily_generation"]["keys"] == ["trading_date", "island", "zone", "fuel"]
+    assert views["mart_daily_generation_weighted_price"]["keys"] == ["trading_date", "island", "fuel"]
+    pairs = {(m["view"], m["column"]) for m in semantic["metrics"]}
+    assert ("mart_daily_generation", "generation_kwh") in pairs
+    assert ("mart_daily_generation", "plant_count") in pairs
+    assert ("mart_daily_generation_weighted_price", "generation_kwh") in pairs
+    assert ("mart_daily_generation_weighted_price", "interim_generation_kwh") in pairs
+    assert ("mart_daily_generation_weighted_price", "weighted_avg_price") in pairs
+
+
+def test_e_not_available_no_longer_claims_missing_generation_but_keeps_demand(semantic):
+    text = semantic["conventions"]["not_available"].lower()
+    assert "no volume, demand or generation data" not in text
+    assert "demand" in text  # 没有需求量数据这一点仍然要说清楚
+
+
+def test_f_weighted_price_says_it_is_not_a_demand_side_price(semantic):
+    m = _metric(semantic, "weighted_avg_price")
+    text = (m["definition"] + " " + " ".join(m["pitfalls"])).lower()
+    assert "demand" in text and "not" in text
+    assert m["unit"] == "NZD/MWh"
+
+
+def test_g_fuel_convention_lists_every_fuel(semantic):
+    text = semantic["conventions"]["fuel"]
+    for fuel in FUELS:
+        assert fuel in text
+
+
+def test_h_metric_names_are_unique_across_the_new_views(semantic, marts):
+    # en 不能重复（用例 c），两个视图都有 generation_kwh 列，所以第二个指标要用不同的 en
+    assert check_metric_fields(semantic, marts) == []
+    assert check_columns_exist(semantic, marts) == []

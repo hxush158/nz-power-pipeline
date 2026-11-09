@@ -288,3 +288,48 @@ models:
       - name: source_file
         description: "来源文件名，用于追溯。"
         data_tests: [not_null]
+
+  - name: mart_daily_generation
+    description: >
+      每个交易日 × 岛 × 分区 × 燃料的发电量汇总。粒度：交易日 × 岛 × 分区 × 燃料。
+      generation_kwh 是 EMI 估算的发电量。不在价格节点里的电厂也计入，island 和 zone 为 NULL。
+    columns:
+      - name: trading_date
+        description: "交易日（新西兰本地日期）。"
+        data_tests: [not_null]
+      - name: island
+        description: "NI 或 SI；发电节点不在价格节点里时为 NULL。"
+      - name: zone
+        description: "定价分区；发电节点不在价格节点里时为 NULL。"
+      - name: fuel
+        description: "统一后的燃料：Hydro、Wind、Geothermal、Solar、Gas、Coal、Diesel、Wood、Battery storage。"
+        data_tests: [not_null]
+      - name: generation_kwh
+        description: "当天该燃料的估算发电量，单位 kWh。"
+        data_tests: [not_null]
+      - name: plant_count
+        description: "当天有记录的电厂数（按 plant_code 去重）。"
+
+  - name: mart_daily_generation_weighted_price
+    description: >
+      每个交易日 × 岛 × 燃料的发电量加权平均价。粒度：交易日 × 岛 × 燃料。
+      含义是"某类燃料的电平均卖在什么价"，不是需求侧价格（没有需求量数据）。
+      只包含有价格的发电；不在价格节点里的发电不计入，所以 generation_kwh 会略小于 mart_daily_generation。
+    columns:
+      - name: trading_date
+        description: "交易日（新西兰本地日期）。"
+        data_tests: [not_null]
+      - name: island
+        description: "NI 或 SI。"
+        data_tests: [not_null]
+      - name: fuel
+        description: "统一后的燃料。"
+        data_tests: [not_null]
+      - name: generation_kwh
+        description: "有价格的那部分发电量（kWh），即加权价的权重之和。"
+        data_tests: [not_null]
+      - name: interim_generation_kwh
+        description: "其中用临时价（interim）定价的发电量（kWh）；为 0 表示加权价完全基于最终价。"
+        data_tests: [not_null]
+      - name: weighted_avg_price
+        description: "按发电量加权的平均价，NZD / MWh，保留 2 位小数；当天权重之和为 0 时为 NULL。可能为负。"

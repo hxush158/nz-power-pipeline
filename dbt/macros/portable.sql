@@ -283,3 +283,32 @@ as decimal(18, 2))
 
 {% macro duckdb__nz_is_generation_file(file_expr) %}regexp_matches({{ file_expr }}, '^[0-9]{6}_Generation_MD\.csv$'){% endmacro %}
 {% macro snowflake__nz_is_generation_file(file_expr) %}regexp_like({{ file_expr }}, '^[0-9]{6}_Generation_MD[.]csv$'){% endmacro %}
+
+
+{# ---- 加权平均价，四舍五入到 2 位小数（decimal(18,2)），全程整数运算，两个引擎逐行一致 ----
+   参数：numerator_cents_expr = sum(权重 * 价格的"分")，weight_expr = sum(权重)；两个都必须是聚合表达式。
+   规则与 nz_avg_price_2dp 相同：四舍五入，恰好在中间时远离零进位；
+        分数 = sign(N) * floor((2*|N| + W) / (2*W))        N = 分的加权和，W = 权重之和
+   权重之和为 0（例如某燃料当天发电量全是 0）时，结果为 NULL，不报除零错（用 nullif）。
+   DuckDB 用 //（整数除法），Snowflake 用 floor(a / b)；最后先转 bigint 再乘 0.01，避免 hugeint 乘 decimal 变成 DOUBLE。 #}
+{% macro nz_weighted_avg_2dp(numerator_cents_expr, weight_expr) %}
+    {{ return(adapter.dispatch('nz_weighted_avg_2dp', 'nz_power')(numerator_cents_expr, weight_expr)) }}
+{% endmacro %}
+
+{% macro duckdb__nz_weighted_avg_2dp(numerator_cents_expr, weight_expr) -%}
+cast(
+    cast(
+        sign({{ numerator_cents_expr }})
+        * ((2 * abs({{ numerator_cents_expr }}) + {{ weight_expr }}) // (2 * nullif({{ weight_expr }}, 0)))
+    as bigint) * 0.01
+as decimal(18, 2))
+{%- endmacro %}
+
+{% macro snowflake__nz_weighted_avg_2dp(numerator_cents_expr, weight_expr) -%}
+cast(
+    cast(
+        sign({{ numerator_cents_expr }})
+        * floor((2 * abs({{ numerator_cents_expr }}) + {{ weight_expr }}) / (2 * nullif({{ weight_expr }}, 0)))
+    as bigint) * 0.01
+as decimal(18, 2))
+{%- endmacro %}
