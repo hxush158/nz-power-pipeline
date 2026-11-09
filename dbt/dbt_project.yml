@@ -10,6 +10,7 @@ macro-paths: ["macros"]
 vars:
   # 相对路径，必须从项目根目录运行 dbt（见 README）
   raw_prices_glob: "data/raw/prices/*.csv"
+  raw_generation_glob: "data/raw/generation/*.csv"
   # 事实表增量加载时，每次重新处理已加载数据里最晚交易日往前 N 天的数据（覆盖被修订的价格）
   fact_lookback_days: 7
 
@@ -34,3 +35,7 @@ seeds:
         region: varchar
         mapping_source: varchar
         nsp_snapshot_date: varchar
+    fuel_map:
+      +column_types:
+        fuel_code: varchar
+        fuel: varchar

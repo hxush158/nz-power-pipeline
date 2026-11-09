@@ -220,3 +220,71 @@ models:
         data_tests: [not_null]
       - name: interim_period_count
         description: "当天仍在使用临时价（interim）的时段数；为 0 表示当天日均价已完全是最终价。"
+
+  - name: dim_plant
+    description: >
+      发电厂维度。粒度：电厂 × 节点 × 网络（同一电厂可在多个节点、或在输电网和配电网两侧各有一行，
+      如 arapuni 的 MRPL 与 POCO）。燃料代码有两套写法，按 seed fuel_map 映射成统一的 fuel。
+      数据来源：EMI Generation_MD（Electricity Authority，新西兰）。
+    columns:
+      - name: plant_key
+        description: "电厂代理键 = hash(plant_code|node_id|network_code)，同一键整表重建后不变。"
+        data_tests: [unique, not_null]
+      - name: plant_code
+        description: "电厂代码 Gen_Code，原样保留（小写、下划线）。"
+        data_tests: [not_null]
+      - name: node_id
+        description: "大写的节点代码，可与 dim_node 关联。"
+        data_tests: [not_null]
+      - name: network_code
+        description: "网络代码，如 MRPL（输电网侧）、POCO（配电网侧）。"
+        data_tests: [not_null]
+      - name: site_code
+        description: "站点代码（节点代码前三位）。"
+      - name: fuel_code
+        description: "源数据里的燃料代码（原样，有两套写法）。"
+      - name: tech_code
+        description: "源数据里的技术代码（原样）。"
+      - name: fuel
+        description: "统一后的燃料：Hydro、Wind、Geothermal、Solar、Gas、Coal、Diesel、Wood、Battery storage。"
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [Hydro, Wind, Geothermal, Solar, Gas, Coal, Diesel, Wood, Battery storage]
+      - name: island
+        description: "节点所在岛屿（来自 dim_node）；节点不在价格节点里时为 NULL。"
+      - name: zone
+        description: "节点所在定价分区（来自 dim_node）；节点不在价格节点里时为 NULL。"
+      - name: is_price_node
+        description: "该节点是否也是价格节点（dim_node 里有）。"
+        data_tests: [not_null]
+
+  - name: fact_generation
+    description: >
+      发电事实表。粒度：交易日 × 交易时段 × 电厂 × 节点 × 网络。generation_kwh 是 EMI 估算的发电量（kWh），
+      0 是真实值。整表重建，不做增量。主键 (period_key, plant_key) 的唯一性由 tests/ 下的单独测试检查；
+      行数和 kWh 总和与 stg_generation 的对账由 tests/reconcile_fact_generation_vs_stg.sql 检查。
+    columns:
+      - name: period_key
+        description: "指向 dim_trading_period。"
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_trading_period')
+                field: period_key
+      - name: plant_key
+        description: "指向 dim_plant。"
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_plant')
+                field: plant_key
+      - name: generation_kwh
+        description: "该时段的估算发电量，单位 kWh（BIGINT）。"
+        data_tests: [not_null]
+      - name: source_file
+        description: "来源文件名，用于追溯。"
+        data_tests: [not_null]

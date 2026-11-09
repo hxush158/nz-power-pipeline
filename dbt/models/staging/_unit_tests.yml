@@ -1,0 +1,54 @@
+version: 2
+
+# stg_generation 的单元测试：给宽表（stg_generation_wide）造几行，核对转出来的长表。
+# fixture 在 tests/fixtures/，列：site_code, poc_code, nwk_code, gen_code, fuel_code, tech_code, trading_date, tp1..tp50, source_file。
+unit_tests:
+
+  - name: stg_generation_g1_keeps_zero_and_drops_empty
+    description: 值为 0 的时段是真实数据，保留；空的时段（该日没有这个时段）不出行。
+    model: stg_generation
+    given:
+      - input: ref('stg_generation_wide')
+        format: csv
+        fixture: gen_wide_zero_and_empty
+    expect:
+      rows:
+        - {trading_date: '2026-04-01', trading_period: 1, generation_kwh: 100}
+        - {trading_date: '2026-04-01', trading_period: 2, generation_kwh: 0}
+
+  - name: stg_generation_g2_dst_end_day_uses_tp49_tp50
+    description: 夏令时结束日有 50 个时段，TP49 和 TP50 的值要转成第 49、50 个时段。
+    model: stg_generation
+    given:
+      - input: ref('stg_generation_wide')
+        format: csv
+        fixture: gen_wide_dst_end_day
+    expect:
+      rows:
+        - {trading_date: '2026-04-05', trading_period: 48, generation_kwh: 7}
+        - {trading_date: '2026-04-05', trading_period: 49, generation_kwh: 5}
+        - {trading_date: '2026-04-05', trading_period: 50, generation_kwh: 6}
+
+  - name: stg_generation_g3_two_networks_stay_separate_and_node_id_is_upper
+    description: 同一电厂在两个网络（MRPL、POCO）各有一行，转出来仍是两组；node_id 转大写，其余字段原样。
+    model: stg_generation
+    given:
+      - input: ref('stg_generation_wide')
+        format: csv
+        fixture: gen_wide_two_networks
+    expect:
+      rows:
+        - {site_code: ARI, node_id: ARI1102, network_code: MRPL, plant_code: arapuni, fuel_code: Hydro, tech_code: Hydro, trading_date: '2026-04-01', trading_period: 1, generation_kwh: 3376, source_file: 202604_Generation_MD.csv}
+        - {site_code: ARI, node_id: ARI1102, network_code: POCO, plant_code: arapuni, fuel_code: Hydro, tech_code: Hydro, trading_date: '2026-04-01', trading_period: 1, generation_kwh: 0, source_file: 202604_Generation_MD.csv}
+
+  - name: stg_generation_g4_dst_start_day_has_no_rows_past_period_46
+    description: 夏令时开始日只有 46 个时段，TP47 以后为空，不出行。
+    model: stg_generation
+    given:
+      - input: ref('stg_generation_wide')
+        format: csv
+        fixture: gen_wide_dst_start_day
+    expect:
+      rows:
+        - {trading_date: '2026-09-27', trading_period: 45, generation_kwh: 10}
+        - {trading_date: '2026-09-27', trading_period: 46, generation_kwh: 11}

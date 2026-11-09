@@ -10,3 +10,6 @@ sources:
       - name: prices_raw
         identifier: PRICES_RAW
         description: "COPY INTO 装入的价格 CSV 原样内容，四个数据列都是字符串，另有 source_file（文件名）和 loaded_at。"
+      - name: generation_raw
+        identifier: GENERATION_RAW
+        description: "COPY INTO 装入的 Generation_MD CSV 原样内容（sql/snowflake/08_generation_copy_into.sql）：57 列全部是字符串，另有 source_file 和 loaded_at。"

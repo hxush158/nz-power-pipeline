@@ -393,3 +393,93 @@ unit_tests:
     expect:
       rows:
         - {period_key: 2026101301, node_key: 111, price_version: final, price_nzd_per_mwh: 50.00}
+
+  # ---------- dim_plant ----------
+  - name: dim_plant_p1_one_row_per_plant_node_network_with_fuel_mapped
+    description: >
+      粒度是 电厂 × 节点 × 网络：同一电厂在 MRPL 和 POCO 两个网络各一行；
+      stg 里 288 个时段行折叠成一行；燃料代码按 fuel_map 映射（HYD→Hydro，ELE→Battery storage）。
+    model: dim_plant
+    given:
+      - input: ref('stg_generation')
+        rows:
+          - {plant_code: arapuni, node_id: ARI1102, network_code: MRPL, site_code: ARI, fuel_code: HYD, tech_code: HYD, trading_period: 1}
+          - {plant_code: arapuni, node_id: ARI1102, network_code: MRPL, site_code: ARI, fuel_code: HYD, tech_code: HYD, trading_period: 2}
+          - {plant_code: arapuni, node_id: ARI1102, network_code: POCO, site_code: ARI, fuel_code: HYD, tech_code: HYD, trading_period: 1}
+          - {plant_code: bess_one, node_id: BSS0001, network_code: POCO, site_code: BSS, fuel_code: ELE, tech_code: BAT, trading_period: 1}
+      - input: ref('fuel_map')
+        rows:
+          - {fuel_code: HYD, fuel: Hydro}
+          - {fuel_code: ELE, fuel: Battery storage}
+      - input: ref('dim_node')
+        rows:
+          - {node_id: ARI1102, island: NI, zone: CNI}
+    expect:
+      rows:
+        - {plant_code: arapuni, node_id: ARI1102, network_code: MRPL, site_code: ARI, fuel_code: HYD, tech_code: HYD, fuel: Hydro, island: NI, zone: CNI, is_price_node: true}
+        - {plant_code: arapuni, node_id: ARI1102, network_code: POCO, site_code: ARI, fuel_code: HYD, tech_code: HYD, fuel: Hydro, island: NI, zone: CNI, is_price_node: true}
+        - {plant_code: bess_one, node_id: BSS0001, network_code: POCO, site_code: BSS, fuel_code: ELE, tech_code: BAT, fuel: Battery storage, island: null, zone: null, is_price_node: false}
+
+  - name: dim_plant_p2_unmapped_fuel_code_gives_null_fuel
+    description: fuel_map 里没有的燃料代码，fuel 为 NULL（由 dim_plant 上的 not_null 测试报错），行不丢。
+    model: dim_plant
+    given:
+      - input: ref('stg_generation')
+        rows:
+          - {plant_code: mystery, node_id: MYS0001, network_code: MRPL, site_code: MYS, fuel_code: XYZ, tech_code: XYZ, trading_period: 1}
+      - input: ref('fuel_map')
+        rows:
+          - {fuel_code: HYD, fuel: Hydro}
+      - input: ref('dim_node')
+        rows:
+          - {node_id: MYS0001, island: SI, zone: LSI}
+    expect:
+      rows:
+        - {plant_code: mystery, node_id: MYS0001, network_code: MRPL, fuel_code: XYZ, fuel: null, island: SI, zone: LSI, is_price_node: true}
+
+  # ---------- fact_generation ----------
+  - name: fact_generation_g1_maps_period_and_plant_keys_and_keeps_zero
+    description: 一行 stg 对应一行事实：period_key 来自日期 + 时段，plant_key 来自 电厂 × 节点 × 网络；0 kWh 保留。
+    model: fact_generation
+    given:
+      - input: ref('stg_generation')
+        rows:
+          - {trading_date: '2026-04-05', trading_period: 49, plant_code: arapuni, node_id: ARI1102, network_code: MRPL, generation_kwh: 5, source_file: 202604_Generation_MD.csv}
+          - {trading_date: '2026-04-05', trading_period: 50, plant_code: arapuni, node_id: ARI1102, network_code: MRPL, generation_kwh: 0, source_file: 202604_Generation_MD.csv}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20260405, trading_date: '2026-04-05'}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026040549, date_key: 20260405, trading_period: 49}
+          - {period_key: 2026040550, date_key: 20260405, trading_period: 50}
+      - input: ref('dim_plant')
+        rows:
+          - {plant_key: 7, plant_code: arapuni, node_id: ARI1102, network_code: MRPL}
+    expect:
+      rows:
+        - {period_key: 2026040549, plant_key: 7, generation_kwh: 5, source_file: 202604_Generation_MD.csv}
+        - {period_key: 2026040550, plant_key: 7, generation_kwh: 0, source_file: 202604_Generation_MD.csv}
+
+  - name: fact_generation_g2_same_plant_two_networks_get_different_plant_keys
+    description: 同一电厂、同一节点、同一时段在两个网络各一行，分别关联到各自的 plant_key，不串、不合并。
+    model: fact_generation
+    given:
+      - input: ref('stg_generation')
+        rows:
+          - {trading_date: '2026-04-01', trading_period: 1, plant_code: arapuni, node_id: ARI1102, network_code: MRPL, generation_kwh: 3376, source_file: 202604_Generation_MD.csv}
+          - {trading_date: '2026-04-01', trading_period: 1, plant_code: arapuni, node_id: ARI1102, network_code: POCO, generation_kwh: 0, source_file: 202604_Generation_MD.csv}
+      - input: ref('dim_date')
+        rows:
+          - {date_key: 20260401, trading_date: '2026-04-01'}
+      - input: ref('dim_trading_period')
+        rows:
+          - {period_key: 2026040101, date_key: 20260401, trading_period: 1}
+      - input: ref('dim_plant')
+        rows:
+          - {plant_key: 7, plant_code: arapuni, node_id: ARI1102, network_code: MRPL}
+          - {plant_key: 8, plant_code: arapuni, node_id: ARI1102, network_code: POCO}
+    expect:
+      rows:
+        - {period_key: 2026040101, plant_key: 7, generation_kwh: 3376}
+        - {period_key: 2026040101, plant_key: 8, generation_kwh: 0}

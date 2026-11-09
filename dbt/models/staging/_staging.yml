@@ -34,3 +34,43 @@ models:
       - name: source_file
         description: "来源文件名（不含目录），用于追溯这一行来自哪个文件。"
         data_tests: [not_null]
+
+  - name: stg_generation_wide
+    description: >
+      EMI Generation_MD（按电厂估算的发电量，每月一个 CSV）的原始宽表视图，全部列为字符串，
+      TP1–TP50 是各交易时段的发电量（kWh），空的时段为 NULL。数据来源：Electricity Authority（新西兰）EMI 网站
+      Wholesale / Datasets / Generation / Generation_MD；页面没有写明使用许可，并说明将来会被更可靠的版本替换。
+
+  - name: stg_generation
+    description: >
+      发电数据长表。粒度：电厂 × 节点 × 网络 × 交易日 × 交易时段。generation_kwh 是 EMI 估算的发电量（kWh），
+      0 是真实值，空时段不出行。同一电厂在同一节点同一天可在输电网和配电网各有一行（如 arapuni 的 MRPL 与 POCO），
+      网络必须在键里。燃料和技术代码有两套写法（Hydro / HYD、Wind / WIN 等），本层保持原样。
+    columns:
+      - name: trading_date
+        description: "交易日（新西兰本地日期）。"
+        data_tests: [not_null]
+      - name: trading_period
+        description: "半小时交易时段编号，1–46 / 1–48 / 1–50，规则同 stg_prices。"
+        data_tests: [not_null]
+      - name: site_code
+        description: "站点代码（节点代码前三位）。"
+      - name: node_id
+        description: "大写的节点代码（POC_Code），可与 dim_node 的 node_id 关联；发电节点不一定在价格节点里。"
+        data_tests: [not_null]
+      - name: network_code
+        description: "网络代码 Nwk_Code，如 MRPL（输电网侧）、POCO（配电网侧）。"
+        data_tests: [not_null]
+      - name: plant_code
+        description: "电厂代码 Gen_Code，原样保留（小写、下划线）。"
+        data_tests: [not_null]
+      - name: fuel_code
+        description: "燃料代码，原样保留；有两套写法，映射在下一层做。"
+      - name: tech_code
+        description: "技术代码，原样保留。"
+      - name: generation_kwh
+        description: "该时段的估算发电量，单位 kWh。"
+        data_tests: [not_null]
+      - name: source_file
+        description: "来源文件名（不含目录），如 202604_Generation_MD.csv。"
+        data_tests: [not_null]

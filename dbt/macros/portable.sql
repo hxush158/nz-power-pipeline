@@ -195,3 +195,91 @@ cast(
     as bigint) * 0.01
 as decimal(18, 2))
 {%- endmacro %}
+
+
+{# ---- 原始发电文件（EMI Generation_MD，宽表）：返回一条 select，产出小写列名
+        site_code, poc_code, nwk_code, gen_code, fuel_code, tech_code, trading_date, tp1..tp50, source_file；全部是字符串。 ---- #}
+{% macro nz_raw_generation() %}
+    {{ return(adapter.dispatch('nz_raw_generation', 'nz_power')()) }}
+{% endmacro %}
+
+{% macro duckdb__nz_raw_generation() %}
+    select
+        Site_Code as site_code, POC_Code as poc_code, Nwk_Code as nwk_code, Gen_Code as gen_code,
+        Fuel_Code as fuel_code, Tech_Code as tech_code, Trading_Date as trading_date,
+        {% for i in range(1, 51) -%}
+        TP{{ i }} as tp{{ i }},
+        {% endfor -%}
+        regexp_extract(filename, '([^/\\]+)$', 1) as source_file
+    from read_csv(
+        '{{ var("raw_generation_glob") }}',
+        header = true,
+        filename = true,
+        all_varchar = true
+    )
+{% endmacro %}
+
+{% macro snowflake__nz_raw_generation() %}
+    select
+        SITE_CODE as site_code, POC_CODE as poc_code, NWK_CODE as nwk_code, GEN_CODE as gen_code,
+        FUEL_CODE as fuel_code, TECH_CODE as tech_code, TRADING_DATE as trading_date,
+        TP1 as tp1,
+        TP2 as tp2,
+        TP3 as tp3,
+        TP4 as tp4,
+        TP5 as tp5,
+        TP6 as tp6,
+        TP7 as tp7,
+        TP8 as tp8,
+        TP9 as tp9,
+        TP10 as tp10,
+        TP11 as tp11,
+        TP12 as tp12,
+        TP13 as tp13,
+        TP14 as tp14,
+        TP15 as tp15,
+        TP16 as tp16,
+        TP17 as tp17,
+        TP18 as tp18,
+        TP19 as tp19,
+        TP20 as tp20,
+        TP21 as tp21,
+        TP22 as tp22,
+        TP23 as tp23,
+        TP24 as tp24,
+        TP25 as tp25,
+        TP26 as tp26,
+        TP27 as tp27,
+        TP28 as tp28,
+        TP29 as tp29,
+        TP30 as tp30,
+        TP31 as tp31,
+        TP32 as tp32,
+        TP33 as tp33,
+        TP34 as tp34,
+        TP35 as tp35,
+        TP36 as tp36,
+        TP37 as tp37,
+        TP38 as tp38,
+        TP39 as tp39,
+        TP40 as tp40,
+        TP41 as tp41,
+        TP42 as tp42,
+        TP43 as tp43,
+        TP44 as tp44,
+        TP45 as tp45,
+        TP46 as tp46,
+        TP47 as tp47,
+        TP48 as tp48,
+        TP49 as tp49,
+        TP50 as tp50,
+        SOURCE_FILE as source_file
+    from {{ source('raw', 'generation_raw') }}
+{% endmacro %}
+
+{% macro nz_is_generation_file(file_expr) %}
+    {{ return(adapter.dispatch('nz_is_generation_file', 'nz_power')(file_expr)) }}
+{% endmacro %}
+
+{% macro duckdb__nz_is_generation_file(file_expr) %}regexp_matches({{ file_expr }}, '^[0-9]{6}_Generation_MD\.csv$'){% endmacro %}
+{% macro snowflake__nz_is_generation_file(file_expr) %}regexp_like({{ file_expr }}, '^[0-9]{6}_Generation_MD[.]csv$'){% endmacro %}
