@@ -215,4 +215,22 @@ def test_l_not_available_points_to_cross_node_average(semantic):
 
 
 def test_m_version_is_bumped_for_the_new_conventions(semantic):
-    assert semantic["version"] == "2026-11.1"
+    assert semantic["version"] == "2026-11.2"
+
+
+def test_n_cross_node_average_is_pooled_over_current_price_rows(semantic):
+    """Decision 2026-11-10: average the mart_current_price rows directly (pooled),
+    not an average of per-node daily averages."""
+    text = semantic["conventions"]["cross_node_average"].lower()
+    assert "mart_current_price" in text
+    assert "every node counts equally" not in text
+    assert "do not average" in text and "daily averages" in text
+    assert "fewer rows" in text
+    assert "date range" in text
+
+
+def test_o_cross_node_average_carries_the_worked_example(semantic):
+    """North Island, 2026-04-08: WHU1101 first appears with 27 of 48 periods."""
+    text = semantic["conventions"]["cross_node_average"]
+    for token in ("2026-04-08", "WHU1101", "162 nodes", "7,755", "162.08"):
+        assert token in text, token
