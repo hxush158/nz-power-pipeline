@@ -1,5 +1,5 @@
 # NZ electricity price metrics. Query only the views listed under `views`; never query fact_* or dim_* tables.
-version: "2026-11.4"
+version: "2026-11.5"
 owner: "nz-power-pipeline"
 
 conventions:
@@ -124,6 +124,19 @@ metrics:
     pitfalls:
       - "NULL means the node already existed at the start of the data (a baseline node) and its real start date is unknown; it does not mean the node has no data."
       - "It is the first date in this data set, not necessarily when the node actually began operating."
+
+  - name: Number of nodes
+    en: node_count
+    aliases: ["how many nodes", "number of nodes", "node count"]
+    unit: nodes
+    view: v_dim_node
+    column: node_id
+    aggregation: count_distinct
+    definition: Number of distinct nodes, computed as count(distinct node_id) over v_dim_node, optionally grouped or filtered by island, zone or region.
+    pitfalls:
+      - "Without a date it counts every node seen in the data up to the base date, including nodes that first appeared during the period. For the number of nodes on a given date, count the nodes whose first_seen_date is NULL or on or before that date. v_dim_node has no end date, so a node that stopped trading would still be counted."
+      - "region is NULL for 19 nodes (the 18 transmission-grid nodes plus KAW2201) and zone is NULL for KAW2201, so these nodes are left out of counts by region or zone; an island total can be larger than the sum of its zones or regions."
+      - "region values name the area and the distribution company in brackets, for example Waikato (WEL Networks); match a company or area name with a pattern on region rather than an exact value."
 
   - name: Daily generation
     en: generation_kwh

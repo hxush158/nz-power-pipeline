@@ -215,7 +215,7 @@ def test_l_not_available_points_to_cross_node_average(semantic):
 
 
 def test_m_version_is_bumped_for_the_new_conventions(semantic):
-    assert semantic["version"] == "2026-11.4"
+    assert semantic["version"] == "2026-11.5"
 
 
 def test_n_cross_node_average_is_pooled_over_current_price_rows(semantic):
@@ -285,3 +285,18 @@ def test_s_metric_names_that_are_not_column_names_always_carry_the_real_column(s
                     problems.append(text[max(0, i - 30) : i + 60])
                 start = i + 1
     assert problems == [], problems
+
+
+def test_t_node_count_metric_counts_distinct_node_ids_in_v_dim_node(semantic):
+    """2026-11-15: the Router refused node-count questions because no metric covered them."""
+    m = _metric(semantic, "node_count")
+    assert m["view"] == "v_dim_node" and m["column"] == "node_id"
+    assert m["aggregation"] == "count_distinct"
+    assert "how many nodes" in [a.lower() for a in m["aliases"]]
+
+
+def test_u_node_count_pitfalls_cover_dates_and_null_groups(semantic):
+    text = " ".join(_metric(semantic, "node_count")["pitfalls"])
+    assert "first_seen_date" in text and "on a given date" in text.lower()
+    assert "19 nodes" in text and "KAW2201" in text  # region NULL: 18 transmission nodes + KAW2201
+    assert "Waikato (WEL Networks)" in text  # region values carry the network name in brackets
