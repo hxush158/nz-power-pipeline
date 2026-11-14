@@ -215,7 +215,7 @@ def test_l_not_available_points_to_cross_node_average(semantic):
 
 
 def test_m_version_is_bumped_for_the_new_conventions(semantic):
-    assert semantic["version"] == "2026-11.2"
+    assert semantic["version"] == "2026-11.3"
 
 
 def test_n_cross_node_average_is_pooled_over_current_price_rows(semantic):
@@ -234,3 +234,24 @@ def test_o_cross_node_average_carries_the_worked_example(semantic):
     text = semantic["conventions"]["cross_node_average"]
     for token in ("2026-04-08", "WHU1101", "162 nodes", "7,755", "162.08"):
         assert token in text, token
+
+
+def test_p_fuel_convention_says_battery_storage_is_not_a_fuel(semantic):
+    """Decision 2026-11-14: Battery storage is storage, excluded from totals, shares and fuel rankings."""
+    text = semantic["conventions"]["fuel"].lower()
+    assert "battery storage" in text and "not a fuel" in text
+    for word in ("total generation", "share", "ranking", "unless", "say"):
+        assert word in text, word
+
+
+def test_q_generation_kwh_pitfall_excludes_battery_from_totals(semantic):
+    text = " ".join(_metric(semantic, "generation_kwh")["pitfalls"]).lower()
+    assert "battery storage" in text
+    assert "exclude" in text and "total generation" in text
+    assert "counted twice" in text  # the reason: energy was already counted when the battery charged
+
+
+def test_r_weighted_avg_price_pitfall_leaves_battery_out_of_fuel_rankings(semantic):
+    text = " ".join(_metric(semantic, "weighted_avg_price")["pitfalls"]).lower()
+    assert "battery storage" in text and "not a fuel" in text
+    assert "ranking" in text and "separately" in text
