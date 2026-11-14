@@ -215,7 +215,7 @@ def test_l_not_available_points_to_cross_node_average(semantic):
 
 
 def test_m_version_is_bumped_for_the_new_conventions(semantic):
-    assert semantic["version"] == "2026-11.3"
+    assert semantic["version"] == "2026-11.4"
 
 
 def test_n_cross_node_average_is_pooled_over_current_price_rows(semantic):
@@ -255,3 +255,33 @@ def test_r_weighted_avg_price_pitfall_leaves_battery_out_of_fuel_rankings(semant
     text = " ".join(_metric(semantic, "weighted_avg_price")["pitfalls"]).lower()
     assert "battery storage" in text and "not a fuel" in text
     assert "ranking" in text and "separately" in text
+
+
+def _all_strings(node, skip_key=None):
+    """Yield every string in the YAML tree except values under the key `en`."""
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k != "en":
+                yield from _all_strings(v)
+    elif isinstance(node, list):
+        for v in node:
+            yield from _all_strings(v)
+    elif isinstance(node, str):
+        yield node
+
+
+def test_s_metric_names_that_are_not_column_names_always_carry_the_real_column(semantic):
+    """2026-11-15: the model read priced_generation_kwh as a column name (Binder Error).
+    Wherever a metric whose en differs from its column is mentioned, the real column and view must follow."""
+    problems = []
+    for m in semantic["metrics"]:
+        if m["en"] == m["column"]:
+            continue
+        hint = f"column {m['column']} in {m['view']}"
+        for text in _all_strings(semantic):
+            start = 0
+            while (i := text.find(m["en"], start)) != -1:
+                if hint not in text[i : i + len(m["en"]) + 80]:
+                    problems.append(text[max(0, i - 30) : i + 60])
+                start = i + 1
+    assert problems == [], problems

@@ -1,5 +1,5 @@
 # NZ electricity price metrics. Query only the views listed under `views`; never query fact_* or dim_* tables.
-version: "2026-11.3"
+version: "2026-11.4"
 owner: "nz-power-pipeline"
 
 conventions:
@@ -157,10 +157,10 @@ metrics:
     definition: Average price at which a fuel's generation was sold on one trading day in one island, weighted by the estimated generation in each trading period at each node, rounded to 2 decimals.
     pitfalls:
       - "This is a supply-side price, not a demand-weighted price and not the average price consumers pay: there is still no demand or consumption volume data."
-      - "Covers only generation at nodes that have a price (about 99.6 percent of all generation for 2026-04 to 2026-09); compare priced_generation_kwh here with generation_kwh in mart_daily_generation."
+      - "Covers only generation at nodes that have a price (about 99.6 percent of all generation for 2026-04 to 2026-09); compare priced_generation_kwh (column generation_kwh in mart_daily_generation_weighted_price) with generation_kwh in mart_daily_generation."
       - "NULL when the fuel's generation weight for that day is 0."
       - "If interim_generation_kwh is greater than 0, part of the price is still interim and may be revised."
-      - "Do not average several days of weighted_avg_price with a plain average; weight each day by priced_generation_kwh."
+      - "Do not average several days of weighted_avg_price with a plain average; weight each day by priced_generation_kwh (column generation_kwh in mart_daily_generation_weighted_price)."
       - "Prices can be negative; do not filter them."
       - "Battery storage is not a fuel: leave it out when ranking or comparing fuels by weighted_avg_price. Batteries discharge at high-price times, so their weighted price is often the highest; mention it separately if relevant."
 
@@ -180,6 +180,6 @@ metrics:
     unit: kWh
     view: mart_daily_generation_weighted_price
     column: interim_generation_kwh
-    definition: Part of priced_generation_kwh whose price is still interim. 0 means weighted_avg_price is based entirely on final prices.
+    definition: Part of priced_generation_kwh (column generation_kwh in mart_daily_generation_weighted_price) whose price is still interim. 0 means weighted_avg_price is based entirely on final prices.
     pitfalls:
       - "Use this to decide whether a weighted price is final; do not infer it from the date."
