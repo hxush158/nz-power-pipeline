@@ -215,7 +215,7 @@ def test_l_not_available_points_to_cross_node_average(semantic):
 
 
 def test_m_version_is_bumped_for_the_new_conventions(semantic):
-    assert semantic["version"] == "2026-11.6"
+    assert semantic["version"] == "2026-11.7"
 
 
 def test_n_cross_node_average_is_pooled_over_current_price_rows(semantic):
@@ -310,3 +310,11 @@ def test_v_no_pitfall_or_convention_suggests_fuzzy_matching(semantic):
         assert "pattern" not in low and " like " not in low and "fuzzy" not in low, text
     text = " ".join(_metric(semantic, "node_count")["pitfalls"])
     assert "exact" in text.lower() and "Waikato (WEL Networks)" in text
+
+
+def test_w_not_available_counts_kaw2201_among_region_null_nodes(semantic):
+    """2026-11-17 golden review (N034): region is NULL for 19 nodes, not 18; KAW2201 lacks both zone and region."""
+    text = semantic["conventions"]["not_available"]
+    assert "19 nodes" in text and "KAW2201" in text
+    assert "18 transmission-grid nodes" in text
+    assert "NULL for the 18 transmission-grid nodes," not in text  # the old, incomplete sentence
