@@ -215,7 +215,7 @@ def test_l_not_available_points_to_cross_node_average(semantic):
 
 
 def test_m_version_is_bumped_for_the_new_conventions(semantic):
-    assert semantic["version"] == "2026-11.5"
+    assert semantic["version"] == "2026-11.6"
 
 
 def test_n_cross_node_average_is_pooled_over_current_price_rows(semantic):
@@ -300,3 +300,13 @@ def test_u_node_count_pitfalls_cover_dates_and_null_groups(semantic):
     assert "first_seen_date" in text and "on a given date" in text.lower()
     assert "19 nodes" in text and "KAW2201" in text  # region NULL: 18 transmission nodes + KAW2201
     assert "Waikato (WEL Networks)" in text  # region values carry the network name in brackets
+
+
+def test_v_no_pitfall_or_convention_suggests_fuzzy_matching(semantic):
+    """2026-11-17: ChemQ's catalog and text2sql rule 14 allow only exact listed values (no LIKE),
+    so the dictionary must map names to the full listed value instead of suggesting a pattern."""
+    for text in _all_strings(semantic):
+        low = text.lower()
+        assert "pattern" not in low and " like " not in low and "fuzzy" not in low, text
+    text = " ".join(_metric(semantic, "node_count")["pitfalls"])
+    assert "exact" in text.lower() and "Waikato (WEL Networks)" in text
